@@ -3,53 +3,114 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Send, Loader2, MessageCircle, Wrench } from "lucide-react";
+import { X, Send, Loader2, MessageCircle, Wrench, Plus, Trash2, MessageSquare, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
+import {
+  getConversations,
+  getConversation,
+  createConversation,
+  addMessage,
+  deleteConversation,
+  findOrCreateDtcConversation,
+  type ChatConversation,
+  type ChatMessage,
+} from "@/lib/chat-storage";
 
 interface ChatPanelProps {
+  diagnosticId: string;
   vehicleInfo?: any;
   analysis?: any;
   dtcCode?: string | null;
   open: boolean;
   onClose: () => void;
+  onAnalysisUpdate?: (updated: any) => void;
 }
 
-export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: ChatPanelProps) {
+export function ChatPanel({
+  diagnosticId,
+  vehicleInfo,
+  analysis,
+  dtcCode,
+  open,
+  onClose,
+  onAnalysisUpdate,
+}: ChatPanelProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversations, setConversations] = useState<ChatConversation[]>([]);
+  const [showList, setShowList] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [updatingReport, setUpdatingReport] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  const loadConversations = () => {
+    setConversations(getConversations(diagnosticId));
+  };
+
   useEffect(() => {
-    if (open && dtcCode && messages.length === 0) {
-      setMessages([{
-        role: "assistant",
-        content: `Estoy listo para ayudarte con el código **${dtcCode}**. ¿Qué quieres saber sobre este código?`,
-      }]);
+    if (open) {
+      loadConversations();
+      if (dtcCode) {
+        const conv = findOrCreateDtcConversation(diagnosticId, dtcCode);
+        setActiveId(conv.id);
+        setMessages(conv.messages);
+        setShowList(false);
+      } else if (!activeId || !getConversation(activeId)) {
+        const all = getConversations(diagnosticId);
+        if (all.length > 0) {
+          setActiveId(all[0].id);
+          setMessages(all[0].messages);
+        } else {
+          handleNewChat();
+        }
+      }
     }
   }, [open, dtcCode]);
 
   useEffect(() => {
-    if (open) {
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
-  }, [open]);
+    if (open) setTimeout(() => inputRef.current?.focus(), 300);
+  }, [open, activeId]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
   }, [messages]);
+
+  const handleNewChat = (type: "general" | "dtc" = "general", code?: string) => {
+    const conv = createConversation(diagnosticId, type, code);
+    setActiveId(conv.id);
+    setMessages([]);
+    loadConversations();
+    setShowList(false);
+  };
+
+  const handleSelectConversation = (id: string) => {
+    const conv = getConversation(id);
+    if (conv) {
+      setActiveId(id);
+      setMessages(conv.messages);
+      setShowList(false);
+    }
+  };
+
+  const handleDelete = (id: string) => {
+    deleteConversation(id);
+    loadConversations();
+    if (activeId === id) {
+      const remaining = getConversations(diagnosticId);
+      if (remaining.length > 0) {
+        setActiveId(remaining[0].id);
+        setMessages(remaining[0].messages);
+      } else {
+        handleNewChat();
+      }
+    }
+  };
 
   const send = async () => {
     const text = input.trim();
-    if (!text || loading) return;
+    if (!text || loading || !activeId) return;
 
     const userMsg: ChatMessage = { role: "user", content: text };
     setMessages((prev) => [...prev, userMsg]);
@@ -57,6 +118,9 @@ export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: Cha
     setLoading(true);
 
     try {
+      const conv = getConversation(activeId);
+      addMessage(activeId, userMsg);
+
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -64,19 +128,52 @@ export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: Cha
           message: text,
           vehicle_info: vehicleInfo,
           analysis,
-          dtc_code: dtcCode || undefined,
-          history: messages.slice(-10),
+          dtc_code: conv?.dtcCode || undefined,
+          history: conv?.messages.slice(-10) || [],
           locale: document.documentElement.lang || "es",
         }),
       });
 
       if (!res.ok) throw new Error("Error en el chat");
       const data = await res.json();
-      setMessages((prev) => [...prev, { role: "assistant", content: data.response }]);
+      const assistantMsg: ChatMessage = { role: "assistant", content: data.response };
+      setMessages((prev) => [...prev, assistantMsg]);
+      addMessage(activeId, assistantMsg);
+      loadConversations();
     } catch (err: any) {
       toast.error(err.message || "Error al enviar mensaje");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateReport = async () => {
+    if (!activeId || !onAnalysisUpdate || messages.length === 0) return;
+    setUpdatingReport(true);
+    try {
+      const conv = getConversation(activeId);
+      const chatHistory = conv?.messages || messages;
+
+      const res = await fetch("/api/chat/update-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          vehicle_info: vehicleInfo,
+          current_analysis: analysis,
+          chat_history: chatHistory,
+          dtc_code: conv?.dtcCode || undefined,
+          locale: document.documentElement.lang || "es",
+        }),
+      });
+
+      if (!res.ok) throw new Error("Error actualizando informe");
+      const data = await res.json();
+      onAnalysisUpdate(data.analysis);
+      toast.success("Informe actualizado con la información del chat");
+    } catch (err: any) {
+      toast.error(err.message || "Error al actualizar informe");
+    } finally {
+      setUpdatingReport(false);
     }
   };
 
@@ -87,20 +184,7 @@ export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: Cha
     }
   };
 
-  const startNewChat = (code?: string) => {
-    setMessages([]);
-    if (code) {
-      setMessages([{
-        role: "assistant",
-        content: `Estoy listo para ayudarte con el código **${code}**. ¿Qué quieres saber?`,
-      }]);
-    } else {
-      setMessages([{
-        role: "assistant",
-        content: "Hola, soy tu mecánico experto. Puedo ayudarte con cualquier duda sobre el diagnóstico. ¿En qué te puedo ayudar?",
-      }]);
-    }
-  };
+  const hasUserMessages = messages.some((m) => m.role === "user");
 
   return (
     <>
@@ -119,18 +203,55 @@ export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: Cha
             </div>
             <div>
               <p className="text-sm font-semibold">Mecánico IA</p>
-              {dtcCode && <p className="text-xs text-muted-foreground">Consultando: {dtcCode}</p>}
+              {dtcCode && <p className="text-xs text-muted-foreground">DTC: {dtcCode}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="sm" onClick={() => startNewChat(dtcCode || undefined)}>
-              Nuevo chat
+            <Button variant="ghost" size="icon" onClick={() => setShowList(!showList)} title="Conversaciones">
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => handleNewChat()} title="Nuevo chat">
+              <Plus className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
               <X className="h-4 w-4" />
             </Button>
           </div>
         </div>
+
+        {showList && (
+          <div className="border-b max-h-60 overflow-y-auto">
+            <div className="p-2 space-y-1">
+              <button
+                onClick={() => handleNewChat()}
+                className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted flex items-center gap-2 text-primary"
+              >
+                <Plus className="h-4 w-4" />
+                Nuevo chat general
+              </button>
+              {conversations.map((conv) => (
+                <div key={conv.id} className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleSelectConversation(conv.id)}
+                    className={`flex-1 text-left px-3 py-2 rounded-md text-sm hover:bg-muted truncate ${activeId === conv.id ? "bg-muted font-medium" : ""}`}
+                  >
+                    <span className="truncate">{conv.title}</span>
+                    <span className="text-xs text-muted-foreground ml-1">({conv.messages.length})</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(conv.id)}
+                    className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+              {conversations.length === 0 && (
+                <p className="text-xs text-muted-foreground px-3 py-2">No hay conversaciones</p>
+              )}
+            </div>
+          </div>
+        )}
 
         <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
           {messages.length === 0 && (
@@ -160,6 +281,25 @@ export function ChatPanel({ vehicleInfo, analysis, dtcCode, open, onClose }: Cha
             </div>
           )}
         </div>
+
+        {hasUserMessages && onAnalysisUpdate && (
+          <div className="px-4 pb-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full gap-2"
+              onClick={handleUpdateReport}
+              disabled={updatingReport}
+            >
+              {updatingReport ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              {updatingReport ? "Actualizando informe..." : "Actualizar informe con esta info"}
+            </Button>
+          </div>
+        )}
 
         <div className="p-4 border-t">
           <div className="flex gap-2">

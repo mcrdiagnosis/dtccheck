@@ -34,7 +34,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
-import { getDiagnosticLocal } from "@/lib/local-storage";
+import { getDiagnosticLocal, saveDiagnosticLocal } from "@/lib/local-storage";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { AuthGate } from "@/components/auth/auth-gate";
 
@@ -751,11 +751,19 @@ export default function DiagnosticResultPage() {
       </button>
 
       <ChatPanel
+        diagnosticId={diagnostic?.id || ""}
         vehicleInfo={diagnostic?.vehicle_info}
         analysis={analysis}
         dtcCode={chatDtcCode}
         open={chatOpen}
         onClose={() => { setChatOpen(false); setChatDtcCode(null); }}
+        onAnalysisUpdate={(updated) => {
+          if (diagnostic) {
+            const updatedDiagnostic = { ...diagnostic, ai_analysis: updated };
+            setDiagnostic(updatedDiagnostic);
+            saveDiagnosticLocal(updatedDiagnostic);
+          }
+        }}
       />
     </div>
   );
