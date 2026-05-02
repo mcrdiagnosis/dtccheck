@@ -71,7 +71,7 @@ function getGenAI() {
 function getModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-3.1-pro-preview",
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ googleSearch: {} } as any],
   });
@@ -80,7 +80,7 @@ function getModel() {
 function getVisionModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-3.1-pro-preview",
   });
 }
 
@@ -102,30 +102,48 @@ export async function extractDTCsFromPDF(
     },
   };
 
-  const prompt = `Lee este documento PDF de un escáner de diagnóstico vehicular.
+  const prompt = `Lee este documento PDF de un escáner de diagnóstico vehicular con MÁXIMO DETALLE.
 
-EXTRAE TODOS los códigos de falla/diagnóstico que aparezcan en TODAS las secciones del documento.
+Extrae TODA la información posible de CADA sección, página y módulo del documento.
 
-Los códigos DTC SIEMPRE siguen estos formatos:
-- Letra (P, C, B o U) + dígitos + opcionalmente una letra hexadecimal (A-F) al final
-- Ejemplos válidos: P0301, P0420:00, C0035, C98A, C98B, B0001, U0100
-- El formato es SIEMPRE: una letra P/C/B/U seguida de 2 a 4 dígitos, con una letra opcional (A-F) al final
-- NO son códigos válidos: PBNS7, PJBU, BSXO, PQBB (tienen letras no hexadecimales mezcladas)
+INFORMACIÓN A EXTRAER:
+1. Nombre EXACTO de cada módulo/sistema tal como aparece en el informe (ej: "Antiblocaque de rueda (ABS) o control dinámico de estabilidad (ESP) -- ESPMK60_0", "Caja de servicio inteligente -- BSI", "Caja de servicio motor -- BSM")
+2. TODOS los códigos DTC con su descripción EXACTA tal como aparece
+3. Estado de cada código si aparece (presente/permanente, intermitente, memorizado, etc.)
+4. Cualquier dato del vehículo: VIN, número de escáner, fecha, versión de software
+5. Cualquier valor, medición o dato técnico que aparezca
 
-Organiza los códigos POR MÓDULO/SISTEMA si el documento los agrupa así (ej: ABS, Airbag, BSI, BSM, Motor, Transmisión, etc.).
+Los códigos DTC siguen estos formatos:
+- Letra (P, C, B o U) + 2 a 4 dígitos + opcionalmente una letra (A-F)
+- Ejemplos: P0301, P0420:00, C0035, C98A, C98B, C1389, C1391
 
-Responde en ${lang}. Responde SOLO en JSON con este formato exacto:
+Responde en ${lang}. Responde SOLO en JSON con este formato:
 {
-  "codes": ["P0301", "C98A"],
+  "codes": ["C98A", "C98B", "C1389", "C1391"],
   "modules": [
-    { "module": "ABS", "codes": ["C0035"] },
-    { "module": "BSI", "codes": ["C98A", "C98B"] }
+    {
+      "module": "Nombre EXACTO del módulo como aparece en el PDF",
+      "codes": ["C98A", "C98B"],
+      "descriptions": {
+        "C98A": "Descripción exacta del código C98A como aparece en el informe",
+        "C98B": "Descripción exacta del código C98B como aparece en el informe"
+      },
+      "details": "Información adicional de este módulo (estado, versiones, etc.)"
+    }
   ],
-  "rawText": "texto completo extraído del PDF"
+  "vehicleInfo": {
+    "vin": "VIN si aparece",
+    "scannerInfo": "Modelo/version del escáner si aparece",
+    "date": "Fecha del diagnóstico si aparece"
+  },
+  "rawText": "TEXTO COMPLETO y detallado de todo el documento, sección por sección, manteniendo el formato original"
 }
 
-Incluye TODO el texto que puedas leer del documento en rawText.
-Es CRUCIAL que no omitas NINGÚN código. Solo incluye códigos que realmente aparezcan en el documento.`;
+Es CRUCIAL:
+- No omitas NINGÚN código de NINGÚN módulo
+- Copia los nombres de módulos EXACTAMENTE como aparecen
+- Incluye TODAS las descripciones de cada código
+- En rawText incluye TODO el texto legible del documento completo`;
 
   const result = await model.generateContent([prompt, pdfPart]);
   const text = result.response.text();

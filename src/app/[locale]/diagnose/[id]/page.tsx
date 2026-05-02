@@ -229,7 +229,7 @@ export default function DiagnosticResultPage() {
                   );
                   return (
                     <div key={mi}>
-                      <div className="flex items-center gap-2 mb-2">
+                      <div className="flex items-center gap-2 mb-1">
                         <Badge variant="secondary" className="text-sm font-semibold">
                           {mod.module}
                         </Badge>
@@ -237,6 +237,9 @@ export default function DiagnosticResultPage() {
                           {mod.codes.length} {mod.codes.length === 1 ? "código" : "códigos"}
                         </span>
                       </div>
+                      {mod.details && (
+                        <p className="text-xs text-muted-foreground mb-2 ml-1">{mod.details}</p>
+                      )}
                       <div className="flex flex-wrap gap-3 ml-2">
                         {moduleCodes.map((dtc) => (
                           <div
@@ -253,6 +256,11 @@ export default function DiagnosticResultPage() {
                             </button>
                             <p className="font-mono font-bold">{dtc.code}</p>
                             <p className="text-sm mt-1">{dtc.description}</p>
+                            {mod.descriptions?.[dtc.code] && mod.descriptions[dtc.code] !== dtc.description && (
+                              <p className="text-xs text-muted-foreground mt-0.5 italic">
+                                Informe: {mod.descriptions[dtc.code]}
+                              </p>
+                            )}
                             <Badge variant="outline" className="mt-2 text-xs">
                               {t(`severity.${normalizeSeverity(dtc.severity)}`)}
                             </Badge>
@@ -272,7 +280,9 @@ export default function DiagnosticResultPage() {
                               <MessageCircle className="h-3.5 w-3.5" />
                             </button>
                             <p className="font-mono font-bold">{code}</p>
-                            <p className="text-sm mt-1 text-muted-foreground">Sin descripción disponible</p>
+                            <p className="text-sm mt-1 text-muted-foreground">
+                              {mod.descriptions?.[code] || "Sin descripción disponible"}
+                            </p>
                           </div>
                         ))}
                       </div>

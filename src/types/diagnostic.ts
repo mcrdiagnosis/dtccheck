@@ -70,7 +70,12 @@ export interface Diagnostic {
   user_id: string;
   source: "pdf" | "manual";
   raw_text: string;
-  modules?: { module: string; codes: string[] }[];
+  modules?: {
+    module: string;
+    codes: string[];
+    descriptions?: Record<string, string>;
+    details?: string;
+  }[];
   dtc_codes: DTCCode[];
   vehicle_info: VehicleInfo;
   ai_analysis: AIAnalysis | null;

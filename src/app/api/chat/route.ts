@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     }
 
     const ai = getGenAI();
-    const model = ai.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = ai.getGenerativeModel({ model: "gemini-3.1-pro-preview" });
 
     const localeLangMap: Record<string, string> = {
       es: "español", en: "English", pt: "português",
