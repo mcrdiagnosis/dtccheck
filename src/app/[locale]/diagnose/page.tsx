@@ -1,0 +1,329 @@
+"use client";
+
+import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "@/i18n/routing";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
+import {
+  FileUp,
+  Upload,
+  Loader2,
+  Car,
+  AlertCircle,
+  CheckCircle2,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
+
+const diagnoseSchema = z.object({
+  dtc_codes: z.string().min(1, "Ingresa al menos un código DTC"),
+  make: z.string().min(1, "Marca requerida"),
+  model: z.string().min(1, "Modelo requerido"),
+  year: z.string().min(4, "Año requerido"),
+  engine: z.string().optional(),
+});
+
+type DiagnoseForm = z.infer<typeof diagnoseSchema>;
+
+export default function DiagnosePage() {
+  const t = useTranslations("diagnose");
+  const router = useRouter();
+  const [activeTab, setActiveTab] = useState("manual");
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfText, setPdfText] = useState<string>("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [dragActive, setDragActive] = useState(false);
+
+  const form = useForm<DiagnoseForm>({
+    resolver: zodResolver(diagnoseSchema),
+    defaultValues: { dtc_codes: "", make: "", model: "", year: "", engine: "" },
+  });
+
+  const handleDrag = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") setDragActive(true);
+    else if (e.type === "dragleave") setDragActive(false);
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file?.type === "application/pdf") {
+      setPdfFile(file);
+      toast.success("PDF cargado correctamente");
+    } else {
+      toast.error("Por favor sube un archivo PDF");
+    }
+  }, []);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setPdfFile(file);
+      toast.success("PDF cargado correctamente");
+    }
+  };
+
+  const extractDtcFromPdf = (text: string): string => {
+    const matches = text.match(/\b([PCBU]\d{4})\b/gi);
+    return matches ? [...new Set(matches.map((c) => c.toUpperCase()))].join(", ") : "";
+  };
+
+  const onSubmit = async (data: DiagnoseForm) => {
+    setIsAnalyzing(true);
+    setProgress(0);
+
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 90) return prev;
+        return prev + Math.random() * 15;
+      });
+    }, 500);
+
+    try {
+      const payload: any = {
+        dtc_codes: data.dtc_codes.split(",").map((c) => c.trim().toUpperCase()),
+        vehicle_info: {
+          make: data.make,
+          model: data.model,
+          year: parseInt(data.year),
+          engine: data.engine || undefined,
+        },
+      };
+
+      if (activeTab === "pdf" && pdfFile) {
+        const formData = new FormData();
+        formData.append("pdf", pdfFile);
+        formData.append("vehicle_info", JSON.stringify(payload.vehicle_info));
+
+        const res = await fetch("/api/diagnose/pdf", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) throw new Error("Error procesando PDF");
+        const result = await res.json();
+        clearInterval(progressInterval);
+        setProgress(100);
+        router.push(`/diagnose/${result.id}`);
+      } else {
+        const res = await fetch("/api/diagnose/dtc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        if (!res.ok) throw new Error("Error en el análisis");
+        const result = await res.json();
+        clearInterval(progressInterval);
+        setProgress(100);
+        router.push(`/diagnose/${result.id}`);
+      }
+    } catch (error: any) {
+      clearInterval(progressInterval);
+      toast.error(error.message || "Error al analizar");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8 max-w-4xl">
+      <div className="mb-8 text-center">
+        <h1 className="text-3xl font-bold">{t("title")}</h1>
+        <p className="mt-2 text-muted-foreground">{t("subtitle")}</p>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="manual" className="gap-2">
+            <Car className="h-4 w-4" />
+            {t("tabManual")}
+          </TabsTrigger>
+          <TabsTrigger value="pdf" className="gap-2">
+            <FileUp className="h-4 w-4" />
+            {t("tabPdf")}
+          </TabsTrigger>
+        </TabsList>
+
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <TabsContent value="manual">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertCircle className="h-5 w-5 text-primary" />
+                  Códigos DTC
+                </CardTitle>
+                <CardDescription>{t("dtcHelp")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Input
+                  placeholder={t("dtcPlaceholder")}
+                  {...form.register("dtc_codes")}
+                  className="font-mono text-lg"
+                />
+                {form.formState.errors.dtc_codes && (
+                  <p className="text-sm text-destructive mt-1">
+                    {form.formState.errors.dtc_codes.message}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="pdf">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileUp className="h-5 w-5 text-primary" />
+                  {t("tabPdf")}
+                </CardTitle>
+                <CardDescription>{t("pdfSupported")}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  onDragEnter={handleDrag}
+                  onDragLeave={handleDrag}
+                  onDragOver={handleDrag}
+                  onDrop={handleDrop}
+                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
+                    dragActive
+                      ? "border-primary bg-primary/5"
+                      : pdfFile
+                      ? "border-emerald-500 bg-emerald-500/5"
+                      : "border-muted-foreground/25 hover:border-primary/50"
+                  }`}
+                >
+                  {pdfFile ? (
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+                      <div>
+                        <p className="font-medium">{pdfFile.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {(pdfFile.size / 1024).toFixed(1)} KB
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPdfFile(null)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <>
+                      <Upload className="h-10 w-10 text-muted-foreground mb-4" />
+                      <p className="text-center text-muted-foreground">
+                        {t("pdfDropzone")}
+                      </p>
+                      <input
+                        type="file"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      />
+                    </>
+                  )}
+                </div>
+                <input type="hidden" {...form.register("dtc_codes")} value="pdf-upload" />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>{t("vehicleInfo")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>{t("make")}</Label>
+                  <Input placeholder="Toyota" {...form.register("make")} />
+                  {form.formState.errors.make && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.make.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("model")}</Label>
+                  <Input placeholder="Corolla" {...form.register("model")} />
+                  {form.formState.errors.model && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.model.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("year")}</Label>
+                  <Input placeholder="2020" {...form.register("year")} />
+                  {form.formState.errors.year && (
+                    <p className="text-sm text-destructive">
+                      {form.formState.errors.year.message}
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>{t("engine")}</Label>
+                  <Input placeholder="2.0L" {...form.register("engine")} />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {isAnalyzing && (
+            <Card className="mt-6">
+              <CardContent className="pt-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="font-medium">{t("analyzing")}</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+                <p className="text-sm text-muted-foreground mt-2">
+                  Buscando en foros y analizando códigos...
+                </p>
+              </CardContent>
+            </Card>
+          )}
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={isAnalyzing}
+              className="gap-2 px-8"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {t("analyzing")}
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  {t("analyze")}
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </Tabs>
+    </div>
+  );
+}

@@ -1,0 +1,152 @@
+{
+  "common": {
+    "appName": "DTCCheck",
+    "tagline": "Intelligent automotive diagnostics",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "back": "Back",
+    "next": "Next",
+    "submit": "Submit",
+    "search": "Search",
+    "close": "Close",
+    "error": "Error",
+    "success": "Success",
+    "language": "Language"
+  },
+  "nav": {
+    "home": "Home",
+    "diagnose": "Diagnose",
+    "dashboard": "Dashboard",
+    "pricing": "Plans",
+    "settings": "Settings",
+    "login": "Log in",
+    "register": "Sign up",
+    "logout": "Log out"
+  },
+  "home": {
+    "hero": "AI-powered automotive diagnostics",
+    "heroDescription": "Upload your PDF report or enter DTC codes and get a complete analysis with real forum solutions and interactive step-by-step tests.",
+    "cta": "Start diagnosis",
+    "feature1Title": "AI Analysis",
+    "feature1Desc": "Google Gemini analyzes your codes searching specialized forums",
+    "feature2Title": "Upload PDF",
+    "feature2Desc": "Drop your OBD2 scanner report and we extract everything automatically",
+    "feature3Title": "Interactive Tests",
+    "feature3Desc": "Guided form with step-by-step tests to complete the diagnosis",
+    "feature4Title": "Full History",
+    "feature4Desc": "Save all your diagnostics and access them anytime"
+  },
+  "diagnose": {
+    "title": "New diagnosis",
+    "subtitle": "Upload a PDF or enter DTC codes manually",
+    "tabPdf": "Upload PDF",
+    "tabManual": "Manual entry",
+    "pdfDropzone": "Drop your PDF here or click to select",
+    "pdfSupported": "Supports OBD2 scanner reports",
+    "dtcPlaceholder": "P0301, P0420, P0171...",
+    "dtcHelp": "Enter DTC codes separated by comma",
+    "vehicleInfo": "Vehicle information",
+    "make": "Make",
+    "model": "Model",
+    "year": "Year",
+    "engine": "Engine (optional)",
+    "analyze": "Analyze diagnosis",
+    "analyzing": "Analyzing with AI...",
+    "pdfProcessing": "Processing PDF..."
+  },
+  "result": {
+    "title": "Diagnosis result",
+    "summary": "Summary",
+    "dtcCodes": "DTC Codes",
+    "probableCauses": "Probable causes",
+    "solutions": "Solutions",
+    "tests": "Interactive tests",
+    "forumInsights": "Forum insights",
+    "severity": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "critical": "Critical"
+    },
+    "difficulty": {
+      "easy": "Easy",
+      "medium": "Medium",
+      "hard": "Hard"
+    },
+    "probability": "Probability",
+    "startTests": "Start tests",
+    "toolsNeeded": "Tools needed",
+    "expectedResult": "Expected result",
+    "testStatus": {
+      "pending": "Pending",
+      "passed": "Passed",
+      "failed": "Failed",
+      "skipped": "Skipped"
+    },
+    "passImplication": "If passes:",
+    "failImplication": "If fails:",
+    "saveTest": "Save result",
+    "reanalyze": "Re-analyze with results",
+    "noResults": "No test results yet",
+    "affectedSystems": "Affected systems",
+    "estimatedCost": "Estimated cost",
+    "steps": "Steps"
+  },
+  "dashboard": {
+    "title": "Diagnostics dashboard",
+    "subtitle": "Your diagnostics history",
+    "noDiagnostics": "You don't have any diagnostics yet",
+    "startOne": "Start a diagnosis",
+    "status": {
+      "pending": "Pending",
+      "analyzing": "Analyzing",
+      "completed": "Completed",
+      "tests_in_progress": "Tests in progress"
+    },
+    "date": "Date",
+    "vehicle": "Vehicle",
+    "codes": "Codes",
+    "source": {
+      "pdf": "PDF",
+      "manual": "Manual"
+    },
+    "viewDetails": "View details",
+    "deleteConfirm": "Delete this diagnosis?"
+  },
+  "auth": {
+    "loginTitle": "Log in",
+    "registerTitle": "Create account",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm password",
+    "loginButton": "Log in",
+    "registerButton": "Create account",
+    "noAccount": "Don't have an account?",
+    "hasAccount": "Already have an account?",
+    "forgotPassword": "Forgot your password?"
+  },
+  "pricing": {
+    "title": "Plans and pricing",
+    "subtitle": "Choose the plan that fits you best",
+    "free": "Free",
+    "pro": "Pro",
+    "premium": "Premium",
+    "month": "/month",
+    "currentPlan": "Current plan",
+    "subscribe": "Subscribe",
+    "diagnosticsPerMonth": "Diagnostics/month",
+    "unlimited": "Unlimited",
+    "pdfUpload": "PDF upload",
+    "forumSearch": "Forum search",
+    "interactiveTests": "Interactive tests",
+    "perDiagnosis": "per diagnosis",
+    "history": "History",
+    "days": "days",
+    "yearHistory": "1 year",
+    "unlimitedHistory": "Unlimited",
+    "exportReport": "Export report"
+  }
+}

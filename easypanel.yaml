@@ -1,0 +1,8 @@
+services:
+  dtccheck:
+    build:
+      type: dockerfile
+    ports:
+      - 3000:3000
+    env:
+      NODE_ENV: production

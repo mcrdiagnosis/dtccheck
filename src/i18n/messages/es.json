@@ -1,0 +1,152 @@
+{
+  "common": {
+    "appName": "DTCCheck",
+    "tagline": "Diagnóstico automotriz inteligente",
+    "loading": "Cargando...",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "edit": "Editar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "submit": "Enviar",
+    "search": "Buscar",
+    "close": "Cerrar",
+    "error": "Error",
+    "success": "Éxito",
+    "language": "Idioma"
+  },
+  "nav": {
+    "home": "Inicio",
+    "diagnose": "Diagnosticar",
+    "dashboard": "Panel",
+    "pricing": "Planes",
+    "settings": "Ajustes",
+    "login": "Iniciar sesión",
+    "register": "Registrarse",
+    "logout": "Cerrar sesión"
+  },
+  "home": {
+    "hero": "Diagnóstico automotriz potenciado por IA",
+    "heroDescription": "Sube tu reporte PDF o ingresa códigos DTC y obtén un análisis completo con soluciones de foros reales y pruebas interactivas paso a paso.",
+    "cta": "Comenzar diagnóstico",
+    "feature1Title": "Análisis con IA",
+    "feature1Desc": "Google Gemini analiza tus códigos buscando en foros especializados",
+    "feature2Title": "Sube tu PDF",
+    "feature2Desc": "Arrastra el reporte de tu escáner OBD2 y extraemos todo automáticamente",
+    "feature3Title": "Pruebas interactivas",
+    "feature3Desc": "Formulario guiado con pruebas paso a paso para completar el diagnóstico",
+    "feature4Title": "Historial completo",
+    "feature4Desc": "Guarda todos tus diagnósticos y accede cuando quieras"
+  },
+  "diagnose": {
+    "title": "Nuevo diagnóstico",
+    "subtitle": "Sube un PDF o ingresa los códigos DTC manualmente",
+    "tabPdf": "Subir PDF",
+    "tabManual": "Ingreso manual",
+    "pdfDropzone": "Arrastra tu PDF aquí o haz clic para seleccionar",
+    "pdfSupported": "Soporta reportes de escáneres OBD2",
+    "dtcPlaceholder": "P0301, P0420, P0171...",
+    "dtcHelp": "Ingresa los códigos DTC separados por coma",
+    "vehicleInfo": "Información del vehículo",
+    "make": "Marca",
+    "model": "Modelo",
+    "year": "Año",
+    "engine": "Motor (opcional)",
+    "analyze": "Analizar diagnóstico",
+    "analyzing": "Analizando con IA...",
+    "pdfProcessing": "Procesando PDF..."
+  },
+  "result": {
+    "title": "Resultado del diagnóstico",
+    "summary": "Resumen",
+    "dtcCodes": "Códigos DTC",
+    "probableCauses": "Causas probables",
+    "solutions": "Soluciones",
+    "tests": "Pruebas interactivas",
+    "forumInsights": "Hallazgos de foros",
+    "severity": {
+      "low": "Baja",
+      "medium": "Media",
+      "high": "Alta",
+      "critical": "Crítica"
+    },
+    "difficulty": {
+      "easy": "Fácil",
+      "medium": "Media",
+      "hard": "Difícil"
+    },
+    "probability": "Probabilidad",
+    "startTests": "Iniciar pruebas",
+    "toolsNeeded": "Herramientas necesarias",
+    "expectedResult": "Resultado esperado",
+    "testStatus": {
+      "pending": "Pendiente",
+      "passed": "Aprobada",
+      "failed": "Fallida",
+      "skipped": "Omitida"
+    },
+    "passImplication": "Si pasa:",
+    "failImplication": "Si falla:",
+    "saveTest": "Guardar resultado",
+    "reanalyze": "Re-analizar con resultados",
+    "noResults": "Aún no hay resultados de pruebas",
+    "affectedSystems": "Sistemas afectados",
+    "estimatedCost": "Costo estimado",
+    "steps": "Pasos"
+  },
+  "dashboard": {
+    "title": "Panel de diagnósticos",
+    "subtitle": "Historial de tus diagnósticos",
+    "noDiagnostics": "No tienes diagnósticos aún",
+    "startOne": "Comenzar un diagnóstico",
+    "status": {
+      "pending": "Pendiente",
+      "analyzing": "Analizando",
+      "completed": "Completado",
+      "tests_in_progress": "Pruebas en progreso"
+    },
+    "date": "Fecha",
+    "vehicle": "Vehículo",
+    "codes": "Códigos",
+    "source": {
+      "pdf": "PDF",
+      "manual": "Manual"
+    },
+    "viewDetails": "Ver detalles",
+    "deleteConfirm": "¿Eliminar este diagnóstico?"
+  },
+  "auth": {
+    "loginTitle": "Iniciar sesión",
+    "registerTitle": "Crear cuenta",
+    "email": "Correo electrónico",
+    "password": "Contraseña",
+    "confirmPassword": "Confirmar contraseña",
+    "loginButton": "Iniciar sesión",
+    "registerButton": "Crear cuenta",
+    "noAccount": "¿No tienes cuenta?",
+    "hasAccount": "¿Ya tienes cuenta?",
+    "forgotPassword": "¿Olvidaste tu contraseña?"
+  },
+  "pricing": {
+    "title": "Planes y precios",
+    "subtitle": "Elige el plan que mejor se adapte a ti",
+    "free": "Gratuito",
+    "pro": "Pro",
+    "premium": "Premium",
+    "month": "/mes",
+    "currentPlan": "Plan actual",
+    "subscribe": "Suscribirse",
+    "diagnosticsPerMonth": "Diagnósticos/mes",
+    "unlimited": "Ilimitados",
+    "pdfUpload": "Subir PDF",
+    "forumSearch": "Búsqueda en foros",
+    "interactiveTests": "Pruebas interactivas",
+    "perDiagnosis": "por diagnóstico",
+    "history": "Historial",
+    "days": "días",
+    "yearHistory": "1 año",
+    "unlimitedHistory": "Ilimitado",
+    "exportReport": "Exportar reporte"
+  }
+}
