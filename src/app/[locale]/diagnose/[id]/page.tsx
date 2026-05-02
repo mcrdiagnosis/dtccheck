@@ -31,7 +31,7 @@ import {
   Lightbulb,
   MessageSquare,
 } from "lucide-react";
-import Link from "next/link";
+import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
 
 const severityColors = {

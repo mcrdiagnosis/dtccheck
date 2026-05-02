@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/routing";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -44,9 +45,9 @@ export default function SettingsPage() {
               <div>
                 <Badge variant="outline">Free</Badge>
               </div>
-              <a href="/pricing">
+              <Link href="/pricing">
                 <Button variant="outline" size="sm">Cambiar plan</Button>
-              </a>
+              </Link>
             </div>
           </CardContent>
         </Card>
