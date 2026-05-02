@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { useForm } from "react-hook-form";
@@ -49,7 +49,7 @@ const MODULE_OPTIONS = [
 ];
 
 const diagnoseSchema = z.object({
-  dtc_codes: z.string().min(1),
+  dtc_codes: z.string().optional(),
   make: z.string().min(1),
   model: z.string().min(1),
   year: z.string().min(4),
@@ -73,6 +73,14 @@ export default function DiagnosePage() {
     resolver: zodResolver(diagnoseSchema),
     defaultValues: { dtc_codes: "", make: "", model: "", year: "", engine: "", module: "" },
   });
+
+  useEffect(() => {
+    if (activeTab === "pdf") {
+      form.setValue("dtc_codes", "pdf-upload");
+    } else {
+      form.setValue("dtc_codes", "");
+    }
+  }, [activeTab, form]);
 
   const handleDrag = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -103,6 +111,16 @@ export default function DiagnosePage() {
   };
 
   const onSubmit = async (data: DiagnoseForm) => {
+    if (activeTab === "manual" && (!data.dtc_codes || data.dtc_codes.trim() === "")) {
+      form.setError("dtc_codes", { message: "Ingresa al menos un código DTC" });
+      return;
+    }
+
+    if (activeTab === "pdf" && !pdfFile) {
+      toast.error("Por favor sube un archivo PDF");
+      return;
+    }
+
     setIsAnalyzing(true);
     setProgress(0);
 
@@ -115,7 +133,7 @@ export default function DiagnosePage() {
 
     try {
       const payload: any = {
-        dtc_codes: data.dtc_codes.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean),
+        dtc_codes: (data.dtc_codes || "").split(",").map((c) => c.trim().toUpperCase()).filter(Boolean),
         locale,
         vehicle_info: {
           make: data.make,
@@ -292,7 +310,6 @@ export default function DiagnosePage() {
                     </>
                   )}
                 </div>
-                <input type="hidden" {...form.register("dtc_codes")} value="pdf-upload" />
               </CardContent>
             </Card>
           </TabsContent>
