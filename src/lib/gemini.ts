@@ -3,7 +3,9 @@ import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto con más de 20 años de experiencia. Analiza los códigos DTC proporcionados para el vehículo especificado.
 
-DEBES buscar información en foros especializados como: automotive-forums.com, mechanicadvice reddit, bimmerfest, toyota-nation, honda-tech, etc. Usa la herramienta de búsqueda de Google para encontrar soluciones reales.
+DEBES buscar información usando la herramienta de búsqueda de Google en:
+1. Foros especializados: automotive-forums.com, mechanicadvice reddit, bimmerfest, toyota-nation, honda-tech, etc.
+2. Videos de YouTube: busca videos que expliquen y muestren cómo diagnosticar y reparar el problema específico para este vehículo.
 
 IMPORTANTE: Responde SIEMPRE en JSON válido con esta estructura exacta:
 {
@@ -37,6 +39,9 @@ IMPORTANTE: Responde SIEMPRE en JSON válido con esta estructura exacta:
   "forum_insights": [
     {"forum": "Reddit r/MechanicAdvice", "summary": "Usuarios reportan que este código comúnmente se resuelve cambiando la bobina", "url": "url"}
   ],
+  "video_resources": [
+    {"title": "Cómo diagnosticar código P0301 - Misfire cilindro 1", "url": "https://www.youtube.com/watch?v=xxx", "channel": "Canal Mecánico", "description": "Video que muestra paso a paso cómo diagnosticar y reparar el misfire en cilindro 1"}
+  ],
   "summary": "Resumen ejecutivo del diagnóstico en 2-3 oraciones."
 }
 
@@ -45,7 +50,9 @@ Asegúrate de que:
 - Cada solución tenga pasos detallados y específicos para el vehículo
 - Las pruebas interactivas sean prácticas y seguras de realizar
 - Incluyas fuentes reales de foros cuando sea posible
-- Los costs sean estimaciones realistas`;
+- INCLUYAS AL MENOS 3 videos de YouTube relevantes con URLs reales de búsqueda
+- Los costs sean estimaciones realistas
+- Los videos sean específicos para el vehículo y código DTC mencionado`;
 
 let genAI: GoogleGenerativeAI | null = null;
 

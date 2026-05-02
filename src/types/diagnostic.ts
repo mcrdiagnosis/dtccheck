@@ -45,6 +45,13 @@ export interface ForumInsight {
   url: string;
 }
 
+export interface VideoResource {
+  title: string;
+  url: string;
+  channel: string;
+  description: string;
+}
+
 export interface AIAnalysis {
   dtc_codes: DTCCode[];
   vehicle_context: {
@@ -54,6 +61,7 @@ export interface AIAnalysis {
   solutions: Solution[];
   interactive_tests: InteractiveTest[];
   forum_insights: ForumInsight[];
+  video_resources: VideoResource[];
   summary: string;
 }
 

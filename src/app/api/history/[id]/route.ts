@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getDiagnosticLocal } from "@/lib/local-storage";
 
 export async function GET(
   _request: NextRequest,
@@ -7,23 +8,22 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+
     const supabase = await createClient();
+    if (supabase) {
+      const { data, error } = await supabase
+        .from("diagnostics")
+        .select("*")
+        .eq("id", id)
+        .single();
 
-    if (!supabase) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
+      if (data) return NextResponse.json(data);
     }
 
-    const { data, error } = await supabase
-      .from("diagnostics")
-      .select("*")
-      .eq("id", id)
-      .single();
+    const local = getDiagnosticLocal(id);
+    if (local) return NextResponse.json(local);
 
-    if (error || !data) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 });
-    }
-
-    return NextResponse.json(data);
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -37,23 +37,19 @@ export async function DELETE(
     const { id } = await params;
     const supabase = await createClient();
 
-    if (!supabase) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      const { error } = await supabase
+        .from("diagnostics")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", user.id);
+      if (error) throw error;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const { error } = await supabase
-      .from("diagnostics")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", user.id);
-
-    if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

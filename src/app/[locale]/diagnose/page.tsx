@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { saveDiagnosticLocal } from "@/lib/local-storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
@@ -135,6 +136,7 @@ export default function DiagnosePage() {
 
         if (!res.ok) throw new Error("Error procesando PDF");
         const result = await res.json();
+        saveDiagnosticLocal(result);
         clearInterval(progressInterval);
         setProgress(100);
         router.push(`/diagnose/${result.id}`);
@@ -147,6 +149,7 @@ export default function DiagnosePage() {
 
         if (!res.ok) throw new Error("Error en el análisis");
         const result = await res.json();
+        saveDiagnosticLocal(result);
         clearInterval(progressInterval);
         setProgress(100);
         router.push(`/diagnose/${result.id}`);
