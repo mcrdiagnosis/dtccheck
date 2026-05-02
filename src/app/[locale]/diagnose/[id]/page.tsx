@@ -522,10 +522,13 @@ export default function DiagnosticResultPage() {
                   const videoId = video.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
                   const thumbKey = `${i}-${videoId}`;
                   const thumbFailed = failedThumbs.has(thumbKey);
+                  const searchQuery = encodeURIComponent(`${video.title} ${analysis.dtc_codes?.[0]?.code || ""} ${video.channel || ""}`);
+                  const searchUrl = `https://www.youtube.com/results?search_query=${searchQuery}`;
+                  const href = thumbFailed || !videoId ? searchUrl : video.url;
                   return (
                     <a
                       key={`video-${i}`}
-                      href={video.url}
+                      href={href}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="group block rounded-lg border border-border/50 overflow-hidden hover:border-primary/30 transition-all"
@@ -540,13 +543,12 @@ export default function DiagnosticResultPage() {
                               setFailedThumbs((prev) => new Set(prev).add(thumbKey));
                             }}
                           />
-                        ) : null}
-                        {(thumbFailed || !videoId) && (
+                        ) : (
                           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                             <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                              <path d="M21.21 3.79a.996.996 0 0 0-1.09-.21C19.44 3.89 17.56 4.5 16 4.5c-2.46 0-4.54-1.56-6-3.12-.46-.46-1.26-.32-1.53.24C7.37 4.2 6 6.84 6 9.5c0 3.59 2.41 6.59 5.68 7.61A5.465 5.465 0 0 0 11 18.5v.5H9c-.55 0-1 .45-1 1s.45 1 1 1h6c.55 0 1-.45 1-1s-.45-1-1-1h-2v-.5c0-.49-.1-.96-.27-1.39C16.16 15.87 19 12.56 19 8.5c0-1.37-.29-2.67-.81-3.86.95-.34 1.95-.8 2.71-1.29.68-.44.69-1.37.31-1.56z"/>
                             </svg>
-                            <span className="text-xs">Ver en YouTube</span>
+                            <span className="text-xs">Buscar en YouTube</span>
                           </div>
                         )}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors pointer-events-none">
@@ -567,6 +569,11 @@ export default function DiagnosticResultPage() {
                         {video.description && (
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
                             {video.description}
+                          </p>
+                        )}
+                        {(thumbFailed || !videoId) && (
+                          <p className="text-xs text-primary mt-1">
+                            Buscar videos reales →
                           </p>
                         )}
                       </div>
