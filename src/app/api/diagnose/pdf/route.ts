@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractTextFromPDF, extractDTCCodes, extractVehicleInfo } from "@/lib/pdf-parser";
-import { analyzeDTCs } from "@/lib/gemini";
+import { analyzeDTCs, extractDTCsFromPDF } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -16,31 +16,47 @@ export async function POST(request: NextRequest) {
     const vehicleInfo = vehicleInfoStr ? JSON.parse(vehicleInfoStr) : {};
     const locale = (formData.get("locale") as string) || "es";
 
+    const buffer = Buffer.from(await pdfFile.arrayBuffer());
+
     let rawText = "";
     let dtcCodes: string[] = [];
 
     try {
-      const buffer = Buffer.from(await pdfFile.arrayBuffer());
       rawText = await extractTextFromPDF(buffer);
       dtcCodes = extractDTCCodes(rawText);
-    } catch (pdfError: any) {
-      console.error("PDF parsing error:", pdfError);
+    } catch (err) {
+      console.error("PDF text extraction error:", err);
     }
 
     if (dtcCodes.length === 0 && rawText.trim().length > 10) {
       dtcCodes = extractDTCCodesLoose(rawText);
     }
 
-    if (dtcCodes.length === 0 && rawText.trim().length < 10) {
-      return NextResponse.json(
-        { error: "No se pudo extraer texto del PDF. El archivo puede ser una imagen escaneada. Intenta ingresar los códigos DTC manualmente." },
-        { status: 400 }
-      );
+    if (dtcCodes.length === 0) {
+      console.log("Local extraction found no DTC codes, using Gemini vision...");
+      try {
+        const visionResult = await extractDTCsFromPDF(buffer, locale);
+        if (visionResult.codes.length > 0) {
+          dtcCodes = visionResult.codes;
+          if (!rawText || rawText.trim().length < 20) {
+            rawText = visionResult.rawText;
+          }
+          console.log("Gemini vision extracted codes:", dtcCodes);
+        } else if (visionResult.rawText) {
+          rawText = visionResult.rawText;
+          dtcCodes = extractDTCCodes(rawText);
+          if (dtcCodes.length === 0) {
+            dtcCodes = extractDTCCodesLoose(rawText);
+          }
+        }
+      } catch (visionErr) {
+        console.error("Gemini vision extraction failed:", visionErr);
+      }
     }
 
     if (dtcCodes.length === 0) {
       return NextResponse.json(
-        { error: "No se encontraron códigos DTC en el PDF. Los códigos pueden estar en un formato no reconocido. Intenta ingresarlos manualmente.", textPreview: rawText.substring(0, 300) },
+        { error: "No se encontraron códigos DTC en el PDF. El documento puede no contener códigos DTC o estar en un formato no legible. Intenta ingresar los códigos manualmente." },
         { status: 400 }
       );
     }

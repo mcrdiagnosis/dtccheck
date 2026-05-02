@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
+import { Part } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto con más de 20 años de experiencia. Analiza los códigos DTC proporcionados para el vehículo especificado.
 
@@ -74,6 +75,61 @@ function getModel() {
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ googleSearch: {} } as any],
   });
+}
+
+function getVisionModel() {
+  const ai = getGenAI();
+  return ai.getGenerativeModel({
+    model: "gemini-2.0-flash",
+  });
+}
+
+export async function extractDTCsFromPDF(
+  pdfBuffer: Buffer,
+  locale?: string
+): Promise<{ codes: string[]; rawText: string }> {
+  const model = getVisionModel();
+
+  const localeLangMap: Record<string, string> = {
+    es: "español", en: "English", pt: "português",
+  };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const pdfPart: Part = {
+    inlineData: {
+      mimeType: "application/pdf",
+      data: pdfBuffer.toString("base64"),
+    },
+  };
+
+  const prompt = `Lee este documento PDF de un escáner OBD2 y extrae TODOS los códigos DTC que aparezcan.
+
+Responde en ${lang}. Responde SOLO en JSON con este formato exacto:
+{
+  "codes": ["P0301", "P0420"],
+  "rawText": "texto completo extraído del PDF"
+}
+
+Si no encuentras códigos DTC, devuelve arrays vacíos pero incluye todo el texto que puedas leer del documento en rawText.
+Los códigos DTC siempre empiezan con P, C, B o U seguidos de 4 dígitos (ej: P0301, C0035, B0001, U0100).`;
+
+  const result = await model.generateContent([prompt, pdfPart]);
+  const text = result.response.text();
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) {
+    return { codes: [], rawText: text };
+  }
+
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return {
+      codes: (parsed.codes || []).filter((c: string) => /^[PCBU]\d{4}$/i.test(c)).map((c: string) => c.toUpperCase()),
+      rawText: parsed.rawText || "",
+    };
+  } catch {
+    return { codes: [], rawText: text };
+  }
 }
 
 export async function analyzeDTCs(
