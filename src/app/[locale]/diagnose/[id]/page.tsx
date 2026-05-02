@@ -30,10 +30,12 @@ import {
   RefreshCw,
   Lightbulb,
   MessageSquare,
+  MessageCircle,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
 import { getDiagnosticLocal } from "@/lib/local-storage";
+import { ChatPanel } from "@/components/chat/chat-panel";
 
 const severityMap: Record<string, string> = {
   low: "low", medium: "medium", high: "high", critical: "critical",
@@ -70,6 +72,14 @@ export default function DiagnosticResultPage() {
   const [loading, setLoading] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
   const [failedThumbs, setFailedThumbs] = useState<Set<string>>(new Set());
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatDtcCode, setChatDtcCode] = useState<string | null>(null);
+
+  const openChat = (dtcCode?: string) => {
+    if (dtcCode) setChatDtcCode(dtcCode);
+    else setChatDtcCode(null);
+    setChatOpen(true);
+  };
 
   useEffect(() => {
     fetchDiagnostic();
@@ -229,8 +239,16 @@ export default function DiagnosticResultPage() {
                         {moduleCodes.map((dtc) => (
                           <div
                             key={dtc.code}
-                            className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                            className={`rounded-lg border p-3 relative group/dtc ${severityColors[normalizeSeverity(dtc.severity)]}`}
                           >
+                            <button
+                              type="button"
+                              onClick={() => openChat(dtc.code)}
+                              className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
+                              title="Preguntar sobre este código"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </button>
                             <p className="font-mono font-bold">{dtc.code}</p>
                             <p className="text-sm mt-1">{dtc.description}</p>
                             <Badge variant="outline" className="mt-2 text-xs">
@@ -241,8 +259,16 @@ export default function DiagnosticResultPage() {
                         {unmatchedCodes.map((code) => (
                           <div
                             key={code}
-                            className="rounded-lg border border-muted-foreground/30 p-3 bg-muted/30"
+                            className="rounded-lg border border-muted-foreground/30 p-3 bg-muted/30 relative group/dtc"
                           >
+                            <button
+                              type="button"
+                              onClick={() => openChat(code)}
+                              className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
+                              title="Preguntar sobre este código"
+                            >
+                              <MessageCircle className="h-3.5 w-3.5" />
+                            </button>
                             <p className="font-mono font-bold">{code}</p>
                             <p className="text-sm mt-1 text-muted-foreground">Sin descripción disponible</p>
                           </div>
@@ -276,8 +302,15 @@ export default function DiagnosticResultPage() {
                       })().map((dtc) => (
                         <div
                           key={dtc.code}
-                          className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                          className={`rounded-lg border p-3 relative group/dtc ${severityColors[normalizeSeverity(dtc.severity)]}`}
                         >
+                          <button
+                            type="button"
+                            onClick={() => openChat(dtc.code)}
+                            className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
+                          >
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          </button>
                           <p className="font-mono font-bold">{dtc.code}</p>
                           <p className="text-sm mt-1">{dtc.description}</p>
                           <Badge variant="outline" className="mt-2 text-xs">
@@ -294,8 +327,15 @@ export default function DiagnosticResultPage() {
                 {analysis.dtc_codes.map((dtc) => (
                   <div
                     key={dtc.code}
-                    className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                    className={`rounded-lg border p-3 relative group/dtc ${severityColors[normalizeSeverity(dtc.severity)]}`}
                   >
+                    <button
+                      type="button"
+                      onClick={() => openChat(dtc.code)}
+                      className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </button>
                     <p className="font-mono font-bold">{dtc.code}</p>
                     <p className="text-sm mt-1">{dtc.description}</p>
                     <Badge variant="outline" className="mt-2 text-xs">
@@ -686,6 +726,23 @@ export default function DiagnosticResultPage() {
           </Card>
         )}
       </div>
+
+      <button
+        type="button"
+        onClick={() => openChat()}
+        className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center z-30"
+        title="Chat con mecánico IA"
+      >
+        <MessageCircle className="h-6 w-6" />
+      </button>
+
+      <ChatPanel
+        vehicleInfo={diagnostic?.vehicle_info}
+        analysis={analysis}
+        dtcCode={chatDtcCode}
+        open={chatOpen}
+        onClose={() => { setChatOpen(false); setChatDtcCode(null); }}
+      />
     </div>
   );
 }
