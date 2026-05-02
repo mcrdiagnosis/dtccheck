@@ -204,7 +204,9 @@ Enfoca el análisis específicamente en este sistema. Las pruebas interactivas d
 3. EXCEPCIÓN: Los campos "severity" y "difficulty" DEBEN usar SIEMPRE estos valores exactos en inglés:
    - severity: "low", "medium", "high", "critical" (NUNCA usar traducciones)
    - difficulty: "easy", "medium", "hard" (NUNCA usar traducciones)
-4. Para URLs de video_resources, usa SOLO URLs reales de YouTube. NO inventes video IDs.
+4. Para sources y urls: usa SOLO URLs reales y completas (con path completo) que hayas encontrado en tu búsqueda. Si no tienes una URL real, pon un string vacío "". NUNCA inventes URLs.
+5. Para video_resources: incluye SOLO videos de YouTube que hayas encontrado realmente en tu búsqueda. Si no encontraste videos reales, devuelve un array vacío. NUNCA inventes video IDs.
+6. Los campos "sources" en probable_causes y solutions deben contener URLs completas (https://dominio.com/path/to/thread), NO solo dominios.
 Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
 
   const result = await model.generateContent(userPrompt);
@@ -218,6 +220,60 @@ Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO e
   }
 
   const analysis: AIAnalysis = JSON.parse(jsonMatch[0]);
+
+  try {
+    const candidate = response.candidates?.[0];
+    const groundingMeta = (candidate?.groundingMetadata as any);
+    const groundingChunks = groundingMeta?.groundingChunks || groundingMeta?.searchEntryPoint?.renderedContent;
+    const searchQueries = groundingMeta?.webSearchQueries || [];
+
+    if (groundingChunks && Array.isArray(groundingChunks)) {
+      const realUrls: { title: string; url: string }[] = [];
+      for (const chunk of groundingChunks) {
+        if (chunk.web?.uri) {
+          realUrls.push({ title: chunk.web?.title || "", url: chunk.web.uri });
+        }
+      }
+
+      if (realUrls.length > 0) {
+        for (const cause of analysis.probable_causes || []) {
+          if (!cause.sources || cause.sources.length === 0 || cause.sources.every(s => !s.startsWith("http") || s.split("/").length < 4)) {
+            const relevant = realUrls
+              .filter(u => u.title.toLowerCase().includes(cause.cause.toLowerCase().split(" ").slice(0, 3).join(" ")) || cause.cause.toLowerCase().split(" ").some(w => u.title.toLowerCase().includes(w)))
+              .slice(0, 2);
+            cause.sources = relevant.length > 0 ? relevant.map(u => u.url) : realUrls.slice(0, 2).map(u => u.url);
+          } else {
+            cause.sources = cause.sources.map(s => {
+              if (!s.startsWith("http") || s.split("/").length < 4) {
+                const match = realUrls.find(u => u.title.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(u.title.toLowerCase()));
+                return match ? match.url : s;
+              }
+              return s;
+            });
+          }
+        }
+
+        for (const insight of analysis.forum_insights || []) {
+          if (!insight.url || !insight.url.startsWith("http") || insight.url.split("/").length < 4) {
+            const match = realUrls.find(u =>
+              u.title.toLowerCase().includes(insight.forum.toLowerCase().split(" ")[0]) ||
+              insight.summary.toLowerCase().split(" ").some(w => w.length > 4 && u.title.toLowerCase().includes(w))
+            );
+            if (match) insight.url = match.url;
+          }
+        }
+
+        for (const sol of analysis.solutions || []) {
+          if (!sol.sources || sol.sources.length === 0) {
+            sol.sources = realUrls.slice(0, 1).map(u => u.url);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Grounding metadata extraction error:", e);
+  }
+
   return analysis;
 }
 
