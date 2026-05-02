@@ -41,7 +41,6 @@ export function Navbar() {
 
   useEffect(() => {
     const supabase = createClient();
-    if (!supabase) return;
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
     const { data: listener } = supabase.auth.onAuthStateChange((_e, session) =>
       setUser(session?.user ?? null)
@@ -68,7 +67,6 @@ export function Navbar() {
 
   const handleLogout = async () => {
     const supabase = createClient();
-    if (!supabase) return;
     await supabase.auth.signOut();
     setUser(null);
     router.push("/");
