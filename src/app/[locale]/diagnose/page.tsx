@@ -11,9 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   FileUp,
   Upload,
@@ -22,15 +28,32 @@ import {
   AlertCircle,
   CheckCircle2,
   X,
+  Cpu,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Controller } from "react-hook-form";
+
+const MODULE_OPTIONS = [
+  { value: "engine", label: "Motor / Engine (P0xxx)", icon: "🔧" },
+  { value: "transmission", label: "Transmisión (P07xx)", icon: "⚙️" },
+  { value: "abs", label: "ABS / Frenos (C0xxx)", icon: "🛞" },
+  { value: "airbag", label: "Airbag / SRS (B0xxx)", icon: "🛡️" },
+  { value: "body", label: "Carrocería (B1xxx)", icon: "🚗" },
+  { value: "chassis", label: "Chasis / Suspensión (C1xxx)", icon: "🔩" },
+  { value: "network", label: "Comunicación / CAN (U0xxx)", icon: "📡" },
+  { value: "emissions", label: "Emisiones (P04xx)", icon: "💨" },
+  { value: "fuel", label: "Combustible (P01xx)", icon: "⛽" },
+  { value: "ignition", label: "Encendido (P03xx)", icon: "⚡" },
+  { value: "other", label: "Otro / No sé", icon: "❓" },
+];
 
 const diagnoseSchema = z.object({
-  dtc_codes: z.string().min(1, "Ingresa al menos un código DTC"),
-  make: z.string().min(1, "Marca requerida"),
-  model: z.string().min(1, "Modelo requerido"),
-  year: z.string().min(4, "Año requerido"),
+  dtc_codes: z.string().min(1),
+  make: z.string().min(1),
+  model: z.string().min(1),
+  year: z.string().min(4),
   engine: z.string().optional(),
+  module: z.string().optional(),
 });
 
 type DiagnoseForm = z.infer<typeof diagnoseSchema>;
@@ -40,14 +63,13 @@ export default function DiagnosePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("manual");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfText, setPdfText] = useState<string>("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
 
   const form = useForm<DiagnoseForm>({
     resolver: zodResolver(diagnoseSchema),
-    defaultValues: { dtc_codes: "", make: "", model: "", year: "", engine: "" },
+    defaultValues: { dtc_codes: "", make: "", model: "", year: "", engine: "", module: "" },
   });
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -78,11 +100,6 @@ export default function DiagnosePage() {
     }
   };
 
-  const extractDtcFromPdf = (text: string): string => {
-    const matches = text.match(/\b([PCBU]\d{4})\b/gi);
-    return matches ? [...new Set(matches.map((c) => c.toUpperCase()))].join(", ") : "";
-  };
-
   const onSubmit = async (data: DiagnoseForm) => {
     setIsAnalyzing(true);
     setProgress(0);
@@ -96,12 +113,13 @@ export default function DiagnosePage() {
 
     try {
       const payload: any = {
-        dtc_codes: data.dtc_codes.split(",").map((c) => c.trim().toUpperCase()),
+        dtc_codes: data.dtc_codes.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean),
         vehicle_info: {
           make: data.make,
           model: data.model,
           year: parseInt(data.year),
           engine: data.engine || undefined,
+          module: data.module || undefined,
         },
       };
 
@@ -166,21 +184,48 @@ export default function DiagnosePage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
-                  Códigos DTC
+                  {t("dtcTitle")}
                 </CardTitle>
                 <CardDescription>{t("dtcHelp")}</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <Input
                   placeholder={t("dtcPlaceholder")}
                   {...form.register("dtc_codes")}
                   className="font-mono text-lg"
                 />
                 {form.formState.errors.dtc_codes && (
-                  <p className="text-sm text-destructive mt-1">
+                  <p className="text-sm text-destructive">
                     {form.formState.errors.dtc_codes.message}
                   </p>
                 )}
+
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-primary" />
+                    {t("moduleLabel")}
+                  </Label>
+                  <Controller
+                    name="module"
+                    control={form.control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger>
+                          <SelectValue placeholder={t("modulePlaceholder")} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {MODULE_OPTIONS.map((mod) => (
+                            <SelectItem key={mod.value} value={mod.value}>
+                              <span className="mr-2">{mod.icon}</span>
+                              {mod.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  <p className="text-xs text-muted-foreground">{t("moduleHelp")}</p>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

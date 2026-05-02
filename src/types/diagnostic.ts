@@ -11,6 +11,7 @@ export interface VehicleInfo {
   model: string;
   year: number;
   engine?: string;
+  module?: string;
 }
 
 export interface ProbableCause {

@@ -77,9 +77,28 @@ export async function analyzeDTCs(
   const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
   const codesStr = dtcCodes.join(", ");
 
+  const moduleMap: Record<string, string> = {
+    engine: "Motor / Tren de potencia",
+    transmission: "Transmisión",
+    abs: "ABS / Sistema de frenos",
+    airbag: "Airbag / SRS / Seguridad pasiva",
+    body: "Carrocería / Body",
+    chassis: "Chasis / Suspensión / Dirección",
+    network: "Comunicación / CAN bus / Red del vehículo",
+    emissions: "Emisiones / Sistema EVAP",
+    fuel: "Sistema de combustible / Inyección",
+    ignition: "Sistema de encendido",
+  };
+
   let userPrompt = `Analiza los siguientes códigos DTC para un vehículo ${vehicleStr}:
 
 Códigos DTC: ${codesStr}`;
+
+  if (vehicleInfo.module && vehicleInfo.module !== "other") {
+    const moduleLabel = moduleMap[vehicleInfo.module] || vehicleInfo.module;
+    userPrompt += `\n\nSistema/Módulo de referencia: ${moduleLabel}
+Enfoca el análisis específicamente en este sistema. Las pruebas interactivas deben ser relevantes para ${moduleLabel}.`;
+  }
 
   if (rawText) {
     userPrompt += `\n\nTexto adicional del escáner:\n${rawText.substring(0, 3000)}`;
