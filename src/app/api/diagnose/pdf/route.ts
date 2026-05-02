@@ -25,20 +25,24 @@ export async function POST(request: NextRequest) {
       dtcCodes = extractDTCCodes(rawText);
     } catch (pdfError: any) {
       console.error("PDF parsing error:", pdfError);
+    }
+
+    if (dtcCodes.length === 0 && rawText.trim().length > 10) {
+      dtcCodes = extractDTCCodesLoose(rawText);
+    }
+
+    if (dtcCodes.length === 0 && rawText.trim().length < 10) {
       return NextResponse.json(
-        { error: "No se pudo leer el PDF. Intenta con otro archivo o ingresa los códigos manualmente.", detail: pdfError.message },
+        { error: "No se pudo extraer texto del PDF. El archivo puede ser una imagen escaneada. Intenta ingresar los códigos DTC manualmente." },
         { status: 400 }
       );
     }
 
     if (dtcCodes.length === 0) {
-      if (!vehicleInfo.make || !vehicleInfo.model) {
-        return NextResponse.json(
-          { error: "No se encontraron códigos DTC en el PDF. Intenta ingresar los códigos manualmente.", textFound: rawText.substring(0, 200) },
-          { status: 400 }
-        );
-      }
-      dtcCodes = ["UNKNOWN"];
+      return NextResponse.json(
+        { error: "No se encontraron códigos DTC en el PDF. Los códigos pueden estar en un formato no reconocido. Intenta ingresarlos manualmente.", textPreview: rawText.substring(0, 300) },
+        { status: 400 }
+      );
     }
 
     const extractedVehicle = extractVehicleInfo(rawText);
@@ -75,8 +79,40 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("PDF diagnosis error:", error);
     return NextResponse.json(
-      { error: error.message || "Error procesando el PDF", stack: process.env.NODE_ENV === "development" ? error.stack : undefined },
+      { error: error.message || "Error procesando el PDF" },
       { status: 500 }
     );
   }
+}
+
+function extractDTCCodesLoose(text: string): string[] {
+  const codes: Set<string> = new Set();
+
+  const patterns = [
+    /\b([PCBU]\d{4})\b/gi,
+    /\b([PCBU]\d{2}\s?\d{2})\b/gi,
+    /DTC[:\s]*([PCBU]\d{4})/gi,
+    /Code[:\s]*([PCBU]\d{4})/gi,
+    /codigo[:\s]*([PCBU]\d{4})/gi,
+    /c[oó]digo[:\s]*([PCBU]\d{4})/gi,
+    /error[:\s]*([PCBU]\d{4})/gi,
+    /fault[:\s]*([PCBU]\d{4})/gi,
+    /\b(P|C|B|U)[\s\-_.:]?(\d{2})[\s\-_.:]?(\d{2})\b/gi,
+  ];
+
+  for (const pattern of patterns) {
+    let match;
+    while ((match = pattern.exec(text)) !== null) {
+      if (match[1] && match[2] && match[3]) {
+        codes.add(`${match[1].toUpperCase()}${match[2]}${match[3]}`);
+      } else if (match[1]) {
+        const code = match[1].toUpperCase().replace(/[\s\-_.:]/g, "");
+        if (/^[PCBU]\d{4}$/.test(code)) {
+          codes.add(code);
+        }
+      }
+    }
+  }
+
+  return [...codes];
 }
