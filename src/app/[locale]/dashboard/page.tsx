@@ -28,6 +28,7 @@ import {
   Plus,
 } from "lucide-react";
 import type { Diagnostic } from "@/types/diagnostic";
+import { getAllLocal, deleteDiagnosticLocal } from "@/lib/local-storage";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-500/10 text-yellow-500",
@@ -48,6 +49,12 @@ export default function DashboardPage() {
 
   const fetchDiagnostics = async () => {
     try {
+      const local = getAllLocal();
+      if (local.length > 0) {
+        setDiagnostics(local);
+        return;
+      }
+
       const res = await fetch("/api/history");
       if (res.ok) {
         const data = await res.json();
@@ -59,10 +66,9 @@ export default function DashboardPage() {
   };
 
   const deleteDiagnostic = async (id: string) => {
-    const res = await fetch(`/api/history/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      setDiagnostics((prev) => prev.filter((d) => d.id !== id));
-    }
+    deleteDiagnosticLocal(id);
+    setDiagnostics((prev) => prev.filter((d) => d.id !== id));
+    await fetch(`/api/history/${id}`, { method: "DELETE" });
   };
 
   if (loading) {

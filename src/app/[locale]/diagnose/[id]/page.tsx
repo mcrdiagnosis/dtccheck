@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
+import { getDiagnosticLocal } from "@/lib/local-storage";
 
 const severityColors = {
   low: "bg-blue-500/10 text-blue-500 border-blue-500/20",
@@ -62,6 +63,12 @@ export default function DiagnosticResultPage() {
 
   const fetchDiagnostic = async () => {
     try {
+      const local = getDiagnosticLocal(params.id as string);
+      if (local) {
+        setDiagnostic(local);
+        return;
+      }
+
       const res = await fetch(`/api/history/${params.id}`);
       if (res.ok) {
         const data = await res.json();
