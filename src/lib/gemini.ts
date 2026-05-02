@@ -80,7 +80,7 @@ function getModel() {
 function getVisionModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-2.5-flash-preview-05-20",
+    model: "gemini-2.5-flash",
   });
 }
 
