@@ -18,6 +18,11 @@ export function AuthGate({ children }: AuthGateProps) {
   useEffect(() => {
     const check = async () => {
       const supabase = createClient();
+      if (!supabase) {
+        setIsLoggedIn(false);
+        setChecking(false);
+        return;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       setIsLoggedIn(!!user);
       setChecking(false);
