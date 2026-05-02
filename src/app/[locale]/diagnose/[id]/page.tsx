@@ -206,20 +206,105 @@ export default function DiagnosticResultPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-3">
-              {analysis.dtc_codes.map((dtc) => (
-                <div
-                  key={dtc.code}
-                  className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
-                >
-                  <p className="font-mono font-bold">{dtc.code}</p>
-                  <p className="text-sm mt-1">{dtc.description}</p>
-                  <Badge variant="outline" className="mt-2 text-xs">
-                    {t(`severity.${normalizeSeverity(dtc.severity)}`)}
-                  </Badge>
-                </div>
-              ))}
-            </div>
+            {diagnostic?.modules && diagnostic.modules.length > 0 ? (
+              <div className="space-y-4">
+                {diagnostic.modules.map((mod, mi) => {
+                  const moduleCodes = analysis.dtc_codes.filter((dtc) =>
+                    mod.codes.map((c) => c.toUpperCase()).includes(dtc.code.toUpperCase())
+                  );
+                  const unmatchedCodes = mod.codes.filter(
+                    (c) => !analysis.dtc_codes.some((dtc) => dtc.code.toUpperCase() === c.toUpperCase())
+                  );
+                  return (
+                    <div key={mi}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge variant="secondary" className="text-sm font-semibold">
+                          {mod.module}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {mod.codes.length} {mod.codes.length === 1 ? "código" : "códigos"}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-3 ml-2">
+                        {moduleCodes.map((dtc) => (
+                          <div
+                            key={dtc.code}
+                            className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                          >
+                            <p className="font-mono font-bold">{dtc.code}</p>
+                            <p className="text-sm mt-1">{dtc.description}</p>
+                            <Badge variant="outline" className="mt-2 text-xs">
+                              {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                            </Badge>
+                          </div>
+                        ))}
+                        {unmatchedCodes.map((code) => (
+                          <div
+                            key={code}
+                            className="rounded-lg border border-muted-foreground/30 p-3 bg-muted/30"
+                          >
+                            <p className="font-mono font-bold">{code}</p>
+                            <p className="text-sm mt-1 text-muted-foreground">Sin descripción disponible</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const allModuleCodes = diagnostic.modules.flatMap((m) =>
+                    m.codes.map((c) => c.toUpperCase())
+                  );
+                  return analysis.dtc_codes.filter(
+                    (dtc) => !allModuleCodes.includes(dtc.code.toUpperCase())
+                  );
+                })().length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge variant="outline" className="text-sm font-semibold">
+                        Otros
+                      </Badge>
+                    </div>
+                    <div className="flex flex-wrap gap-3 ml-2">
+                      {(() => {
+                        const allModuleCodes = diagnostic!.modules!.flatMap((m) =>
+                          m.codes.map((c) => c.toUpperCase())
+                        );
+                        return analysis.dtc_codes.filter(
+                          (dtc) => !allModuleCodes.includes(dtc.code.toUpperCase())
+                        );
+                      })().map((dtc) => (
+                        <div
+                          key={dtc.code}
+                          className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                        >
+                          <p className="font-mono font-bold">{dtc.code}</p>
+                          <p className="text-sm mt-1">{dtc.description}</p>
+                          <Badge variant="outline" className="mt-2 text-xs">
+                            {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-3">
+                {analysis.dtc_codes.map((dtc) => (
+                  <div
+                    key={dtc.code}
+                    className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
+                  >
+                    <p className="font-mono font-bold">{dtc.code}</p>
+                    <p className="text-sm mt-1">{dtc.description}</p>
+                    <Badge variant="outline" className="mt-2 text-xs">
+                      {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+            )}
           </CardContent>
         </Card>
 
