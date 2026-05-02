@@ -155,7 +155,10 @@ export default function DiagnosePage() {
           body: formData,
         });
 
-        if (!res.ok) throw new Error("Error procesando PDF");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || "Error procesando PDF");
+        }
         const result = await res.json();
         saveDiagnosticLocal(result);
         clearInterval(progressInterval);

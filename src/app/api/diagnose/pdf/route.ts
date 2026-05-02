@@ -13,21 +13,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "No PDF file" }, { status: 400 });
     }
 
-    const vehicleInfo = JSON.parse(vehicleInfoStr);
-    const locale = formData.get("locale") as string || "es";
+    const vehicleInfo = vehicleInfoStr ? JSON.parse(vehicleInfoStr) : {};
+    const locale = (formData.get("locale") as string) || "es";
 
-    const buffer = Buffer.from(await pdfFile.arrayBuffer());
-    const rawText = await extractTextFromPDF(buffer);
-    const dtcCodes = extractDTCCodes(rawText);
-    const extractedVehicle = extractVehicleInfo(rawText);
+    let rawText = "";
+    let dtcCodes: string[] = [];
 
-    if (dtcCodes.length === 0) {
+    try {
+      const buffer = Buffer.from(await pdfFile.arrayBuffer());
+      rawText = await extractTextFromPDF(buffer);
+      dtcCodes = extractDTCCodes(rawText);
+    } catch (pdfError: any) {
+      console.error("PDF parsing error:", pdfError);
       return NextResponse.json(
-        { error: "No se encontraron códigos DTC en el PDF" },
+        { error: "No se pudo leer el PDF. Intenta con otro archivo o ingresa los códigos manualmente.", detail: pdfError.message },
         { status: 400 }
       );
     }
 
+    if (dtcCodes.length === 0) {
+      if (!vehicleInfo.make || !vehicleInfo.model) {
+        return NextResponse.json(
+          { error: "No se encontraron códigos DTC en el PDF. Intenta ingresar los códigos manualmente.", textFound: rawText.substring(0, 200) },
+          { status: 400 }
+        );
+      }
+      dtcCodes = ["UNKNOWN"];
+    }
+
+    const extractedVehicle = extractVehicleInfo(rawText);
     const mergedVehicle = {
       ...vehicleInfo,
       ...Object.fromEntries(Object.entries(extractedVehicle).filter(([, v]) => v)),
@@ -61,7 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error("PDF diagnosis error:", error);
     return NextResponse.json(
-      { error: error.message || "Error procesando el PDF" },
+      { error: error.message || "Error procesando el PDF", stack: process.env.NODE_ENV === "development" ? error.stack : undefined },
       { status: 500 }
     );
   }

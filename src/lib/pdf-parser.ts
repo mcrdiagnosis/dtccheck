@@ -1,10 +1,52 @@
 type PDFParseResult = { text: string; numpages: number; info: any };
 
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
-  const pdfModule: any = await import("pdf-parse");
-  const pdf = pdfModule.default || pdfModule;
-  const data: PDFParseResult = await pdf(buffer);
-  return data.text;
+  try {
+    const pdfModule: any = await import("pdf-parse");
+    const pdf = pdfModule.default || pdfModule;
+    const data: PDFParseResult = await pdf(buffer);
+    return data.text || "";
+  } catch (err) {
+    console.error("pdf-parse failed, trying fallback:", err);
+    return extractTextFallback(buffer);
+  }
+}
+
+async function extractTextFallback(buffer: Buffer): Promise<string> {
+  const raw = buffer.toString("latin1");
+  const textParts: string[] = [];
+
+  const streamRegex = /stream\r?\n([\s\S]*?)\r?\nendstream/g;
+  let match;
+  while ((match = streamRegex.exec(raw)) !== null) {
+    const content = match[1];
+    const textMatches = content.match(/\(([^)]*)\)/g);
+    if (textMatches) {
+      textParts.push(
+        ...textMatches.map((t) =>
+          t
+            .slice(1, -1)
+            .replace(/\\n/g, "\n")
+            .replace(/\\r/g, "\r")
+            .replace(/\\t/g, "\t")
+            .replace(/\\\(/g, "(")
+            .replace(/\\\)/g, ")")
+        )
+      );
+    }
+
+    const tjMatches = content.match(/\[([^\]]*)\]\s*Tj/g);
+    if (tjMatches) {
+      for (const tj of tjMatches) {
+        const parts = tj.match(/\(([^)]*)\)/g);
+        if (parts) {
+          textParts.push(...parts.map((p) => p.slice(1, -1)));
+        }
+      }
+    }
+  }
+
+  return textParts.join(" ").replace(/\s+/g, " ").trim();
 }
 
 export function extractDTCCodes(text: string): string[] {
