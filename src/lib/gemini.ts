@@ -51,11 +51,17 @@ Asegúrate de que:
 - Cada solución tenga pasos detallados y específicos para el vehículo
 - Las pruebas interactivas sean prácticas y seguras de realizar
 - Incluyas fuentes reales de foros cuando sea posible
-- INCLUYAS AL MENOS 3 videos de YouTube relevantes con URLs reales de búsqueda
 - Los costs sean estimaciones realistas
 - Los videos sean específicos para el vehículo y código DTC mencionado
 - TODAS las URLs en sources, forum_insights.url, y video_resources.url sean URLs COMPLETAS (incluyendo https:// y la ruta completa), NO solo dominios
-- Los campos "forum" en forum_insights deben ser el nombre del foro/hilo, y "url" debe ser la URL completa al hilo o post específico`;
+- Los campos "forum" en forum_insights deben ser el nombre del foro/hilo, y "url" debe ser la URL completa al hilo o post específico
+
+CRÍTICO SOBRE VIDEO_RESOURCES:
+- video_resources DEBE contener SOLO videos de YouTube que HAYAS ENCONTRADO REALMENTE en tu búsqueda
+- Los IDs de video de YouTube son SIEMPRE de exactamente 11 caracteres alfanuméricos (ej: dQw4w9WgXcQ)
+- Si NO encontraste videos reales de YouTube en tu búsqueda, devuelve video_resources como array vacío []
+- NUNCA inventes, construyas o guesses video IDs. Un ID falso es peor que no tener video.
+- Las URLs deben ser https://www.youtube.com/watch?v=XXXXXXXXXXX donde XXXXXXXXXXX es un ID real`;
 
 let genAI: GoogleGenerativeAI | null = null;
 
