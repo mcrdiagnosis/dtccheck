@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractTextFromPDF, extractDTCCodes, extractVehicleInfo } from "@/lib/pdf-parser";
+import { extractVehicleInfo } from "@/lib/pdf-parser";
 import { analyzeDTCs, extractDTCsFromPDF } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
@@ -18,49 +18,17 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await pdfFile.arrayBuffer());
 
-    let rawText = "";
-    let dtcCodes: string[] = [];
+    console.log("Extracting DTC codes from PDF via Gemini vision...");
+    const visionResult = await extractDTCsFromPDF(buffer, locale);
+    const dtcCodes = visionResult.codes;
+    const rawText = visionResult.rawText || "";
+    const visionModules = visionResult.modules || [];
 
-    try {
-      rawText = await extractTextFromPDF(buffer);
-      dtcCodes = extractDTCCodes(rawText);
-    } catch (err) {
-      console.error("PDF text extraction error:", err);
-    }
-
-    let visionModules: { module: string; codes: string[] }[] = [];
-
-    if (dtcCodes.length === 0 && rawText.trim().length > 10) {
-      dtcCodes = extractDTCCodesLoose(rawText);
-    }
-
-    if (dtcCodes.length === 0) {
-      console.log("Local extraction found no DTC codes, using Gemini vision...");
-      try {
-        const visionResult = await extractDTCsFromPDF(buffer, locale);
-        if (visionResult.codes.length > 0) {
-          dtcCodes = visionResult.codes;
-          visionModules = visionResult.modules || [];
-          if (!rawText || rawText.trim().length < 20) {
-            rawText = visionResult.rawText;
-          }
-          console.log("Gemini vision extracted codes:", dtcCodes, "modules:", visionModules.map(m => m.module));
-        } else if (visionResult.rawText) {
-          rawText = visionResult.rawText;
-          dtcCodes = extractDTCCodes(rawText);
-          if (dtcCodes.length === 0) {
-            dtcCodes = extractDTCCodesLoose(rawText);
-          }
-          visionModules = visionResult.modules || [];
-        }
-      } catch (visionErr) {
-        console.error("Gemini vision extraction failed:", visionErr);
-      }
-    }
+    console.log("Extracted codes:", dtcCodes, "modules:", visionModules.map(m => m.module).join(", "));
 
     if (dtcCodes.length === 0) {
       return NextResponse.json(
-        { error: "No se encontraron códigos DTC en el PDF. El documento puede no contener códigos DTC o estar en un formato no legible. Intenta ingresar los códigos manualmente." },
+        { error: "No se encontraron códigos DTC en el PDF. Intenta ingresar los códigos manualmente." },
         { status: 400 }
       );
     }
@@ -72,7 +40,7 @@ export async function POST(request: NextRequest) {
     };
 
     const moduleContext = visionModules.length > 0
-      ? `\n\nEl escáner reportó códigos en estos módulos: ${visionModules.map(m => `${m.module} (${m.codes.join(", ")})`).join("; ")}.\nAnaliza TODOS los módulos, no solo los códigos OBD2 estándar.`
+      ? `\n\nEl escáner reportó códigos agrupados por módulo: ${visionModules.map(m => `${m.module}: ${m.codes.join(", ")}`).join("; ")}.\nAnaliza TODOS los módulos.`
       : "";
 
     const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText + moduleContext, locale);
@@ -108,29 +76,4 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-function extractDTCCodesLoose(text: string): string[] {
-  const codes: Set<string> = new Set();
-
-  const patterns = [
-    /\b([PCBU]\d{2,4}[A-F]?)(?::\d{2})?\b/gi,
-    /DTC[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
-    /[Cc]odigo[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
-    /[Ee]rror[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
-    /[Ff]ault[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
-    /[Dd]efecto[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
-  ];
-
-  for (const pattern of patterns) {
-    let match;
-    while ((match = pattern.exec(text)) !== null) {
-      const raw = match[1].toUpperCase();
-      if (/^[PCBU]\d{2,4}[A-F]?$/.test(raw)) {
-        codes.add(raw);
-      }
-    }
-  }
-
-  return [...codes];
 }
