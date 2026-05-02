@@ -50,24 +50,29 @@ export function ChatPanel({
   };
 
   useEffect(() => {
-    if (open) {
-      loadConversations();
-      if (dtcCode) {
-        const conv = findOrCreateDtcConversation(diagnosticId, dtcCode);
-        setActiveId(conv.id);
-        setMessages(conv.messages);
-        setShowList(false);
-      } else if (!activeId || !getConversation(activeId)) {
-        const all = getConversations(diagnosticId);
-        if (all.length > 0) {
-          setActiveId(all[0].id);
-          setMessages(all[0].messages);
-        } else {
-          handleNewChat();
-        }
+    setActiveId(null);
+    setMessages([]);
+    setShowList(false);
+  }, [diagnosticId]);
+
+  useEffect(() => {
+    if (!open || !diagnosticId) return;
+    loadConversations();
+    if (dtcCode) {
+      const conv = findOrCreateDtcConversation(diagnosticId, dtcCode);
+      setActiveId(conv.id);
+      setMessages(conv.messages);
+      setShowList(false);
+    } else {
+      const all = getConversations(diagnosticId);
+      if (all.length > 0) {
+        setActiveId(all[0].id);
+        setMessages(all[0].messages);
+      } else {
+        handleNewChat();
       }
     }
-  }, [open, dtcCode]);
+  }, [open, dtcCode, diagnosticId]);
 
   useEffect(() => {
     if (open) setTimeout(() => inputRef.current?.focus(), 300);
