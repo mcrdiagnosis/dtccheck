@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { diagnostic_id, test_results } = await request.json();
+    const { diagnostic_id, test_results, locale } = await request.json();
 
     const supabase = await createClient();
     if (!supabase) {
@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     const updatedAnalysis = await reanalyzeWithTestResults(
       diagnostic.ai_analysis,
       diagnostic.vehicle_info,
-      test_results
+      test_results,
+      locale
     );
 
     await supabase

@@ -35,7 +35,20 @@ import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
 import { getDiagnosticLocal } from "@/lib/local-storage";
 
-const severityColors = {
+const severityMap: Record<string, string> = {
+  low: "low", medium: "medium", high: "high", critical: "critical",
+  baja: "low", medio: "medium", media: "medium", alta: "high", critica: "critical", critico: "critical",
+  baixo: "low", moderado: "medium", alto: "high", critico_pt: "critical",
+};
+const difficultyMap: Record<string, string> = {
+  easy: "easy", medium: "medium", hard: "hard",
+  facil: "easy", fácil: "easy", media: "medium", medio: "medium", dificil: "hard", difícil: "hard",
+  fácil_pt: "easy", médio: "medium", difícil_pt: "hard",
+};
+const normalizeSeverity = (v: string) => severityMap[(v || "").toLowerCase().trim()] || "medium";
+const normalizeDifficulty = (v: string) => difficultyMap[(v || "").toLowerCase().trim()] || "medium";
+
+const severityColors: Record<string, string> = {
   low: "bg-blue-500/10 text-blue-500 border-blue-500/20",
   medium: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",
   high: "bg-orange-500/10 text-orange-500 border-orange-500/20",
@@ -56,6 +69,7 @@ export default function DiagnosticResultPage() {
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
   const [loading, setLoading] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [failedThumbs, setFailedThumbs] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchDiagnostic();
@@ -196,12 +210,12 @@ export default function DiagnosticResultPage() {
               {analysis.dtc_codes.map((dtc) => (
                 <div
                   key={dtc.code}
-                  className={`rounded-lg border p-3 ${severityColors[dtc.severity]}`}
+                  className={`rounded-lg border p-3 ${severityColors[normalizeSeverity(dtc.severity)]}`}
                 >
                   <p className="font-mono font-bold">{dtc.code}</p>
                   <p className="text-sm mt-1">{dtc.description}</p>
                   <Badge variant="outline" className="mt-2 text-xs">
-                    {t(`severity.${dtc.severity}`)}
+                    {t(`severity.${normalizeSeverity(dtc.severity)}`)}
                   </Badge>
                 </div>
               ))}
@@ -284,14 +298,14 @@ export default function DiagnosticResultPage() {
                     <div className="flex items-center gap-3 text-left">
                       <Badge
                         variant={
-                          sol.difficulty === "easy"
+                          normalizeDifficulty(sol.difficulty) === "easy"
                             ? "secondary"
-                            : sol.difficulty === "medium"
+                            : normalizeDifficulty(sol.difficulty) === "medium"
                             ? "outline"
                             : "destructive"
                         }
                       >
-                        {t(`difficulty.${sol.difficulty}`)}
+                        {t(`difficulty.${normalizeDifficulty(sol.difficulty)}`)}
                       </Badge>
                       <span>{sol.description}</span>
                     </div>
@@ -506,6 +520,8 @@ export default function DiagnosticResultPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {analysis.video_resources.map((video, i) => {
                   const videoId = video.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/)?.[1];
+                  const thumbKey = `${i}-${videoId}`;
+                  const thumbFailed = failedThumbs.has(thumbKey);
                   return (
                     <a
                       key={`video-${i}`}
@@ -515,24 +531,18 @@ export default function DiagnosticResultPage() {
                       className="group block rounded-lg border border-border/50 overflow-hidden hover:border-primary/30 transition-all"
                     >
                       <div className="relative aspect-video bg-muted flex items-center justify-center">
-                        {videoId ? (
+                        {videoId && !thumbFailed ? (
                           <img
                             src={`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`}
                             alt={video.title}
                             className="w-full h-full object-cover"
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).style.display = "none";
-                              const parent = (e.target as HTMLImageElement).parentElement;
-                              if (parent) {
-                                const fallback = document.createElement("div");
-                                fallback.className = "flex flex-col items-center justify-center gap-2 text-muted-foreground";
-                                fallback.innerHTML = '<svg class="h-8 w-8" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg><span class="text-xs">Ver en YouTube</span>';
-                                parent.appendChild(fallback);
-                              }
+                            onError={() => {
+                              setFailedThumbs((prev) => new Set(prev).add(thumbKey));
                             }}
                           />
-                        ) : (
-                          <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        ) : null}
+                        {(thumbFailed || !videoId) && (
+                          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 text-muted-foreground">
                             <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                             </svg>

@@ -119,7 +119,14 @@ Enfoca el análisis específicamente en este sistema. Las pruebas interactivas d
   };
   const responseLang = localeLangMap[locale || "es"] || "español";
 
-  userPrompt += `\n\nIMPORTANTISIMO: TODA tu respuesta (descripciones, causas, soluciones, pruebas, resumen, etc.) DEBE estar en ${responseLang}. Los campos del JSON permanecen en inglés como nombres de clave, pero los VALORES deben estar en ${responseLang}. Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
+  userPrompt += `\n\nIMPORTANTISIMO:
+1. TODA tu respuesta (descripciones, causas, soluciones, pruebas, resumen, etc.) DEBE estar en ${responseLang}.
+2. Los campos del JSON permanecen en inglés como nombres de clave, pero los VALORES deben estar en ${responseLang}.
+3. EXCEPCIÓN: Los campos "severity" y "difficulty" DEBEN usar SIEMPRE estos valores exactos en inglés:
+   - severity: "low", "medium", "high", "critical" (NUNCA usar traducciones)
+   - difficulty: "easy", "medium", "hard" (NUNCA usar traducciones)
+4. Para URLs de video_resources, usa SOLO URLs reales de YouTube. NO inventes video IDs.
+Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
 
   const result = await model.generateContent(userPrompt);
 
@@ -138,7 +145,8 @@ Enfoca el análisis específicamente en este sistema. Las pruebas interactivas d
 export async function reanalyzeWithTestResults(
   originalAnalysis: AIAnalysis,
   vehicleInfo: VehicleInfo,
-  testResults: { test_id: string; test_name: string; status: string; user_notes: string }[]
+  testResults: { test_id: string; test_name: string; status: string; user_notes: string }[],
+  locale?: string
 ): Promise<AIAnalysis> {
   const model = getModel();
 
@@ -148,12 +156,21 @@ export async function reanalyzeWithTestResults(
     .map((t) => `- ${t.test_name}: ${t.status}${t.user_notes ? ` (${t.user_notes})` : ""}`)
     .join("\n");
 
+  const localeLangMap: Record<string, string> = {
+    es: "español",
+    en: "English",
+    pt: "português",
+  };
+  const responseLang = localeLangMap[locale || "es"] || "español";
+
   const userPrompt = `Re-analiza el diagnóstico para un ${vehicleStr} con los siguientes resultados de pruebas:
 
 Códigos originales: ${originalAnalysis.dtc_codes.map((c) => c.code).join(", ")}
 
 Resultados de pruebas:
 ${testSummary}
+
+IMPORTANTISIMO: TODA tu respuesta DEBE estar en ${responseLang}. Los campos del JSON permanecen en inglés como nombres de clave, pero los VALORES deben estar en ${responseLang}.
 
 Basándote en estos resultados, actualiza las causas probables y soluciones. Responde SOLO en JSON válido con la misma estructura.`;
 

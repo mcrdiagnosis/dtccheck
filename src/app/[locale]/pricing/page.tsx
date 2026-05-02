@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Check, Zap, Crown } from "lucide-react";
+import { Check, Zap, Crown, Loader2 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 
 const plans = [
@@ -57,6 +58,24 @@ const plans = [
 
 export default function PricingPage() {
   const t = useTranslations("pricing");
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  const handleSubscribe = async (planKey: string) => {
+    setLoadingPlan(planKey);
+    try {
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan: planKey }),
+      });
+      const data = await res.json();
+      if (data.url) {
+        window.location.href = data.url;
+      }
+    } catch {
+      setLoadingPlan(null);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-5xl">
@@ -109,14 +128,23 @@ export default function PricingPage() {
                   </div>
                 ))}
               </div>
-              <Link href={plan.key === "free" ? "/diagnose" : `/api/stripe/checkout?plan=${plan.key}`}>
+              {plan.key === "free" ? (
+                <Link href="/diagnose">
+                  <Button className="w-full" variant="outline">
+                    {plan.cta}
+                  </Button>
+                </Link>
+              ) : (
                 <Button
                   className="w-full"
                   variant={plan.popular ? "default" : "outline"}
+                  onClick={() => handleSubscribe(plan.key)}
+                  disabled={loadingPlan === plan.key}
                 >
+                  {loadingPlan === plan.key && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                   {plan.cta}
                 </Button>
-              </Link>
+              )}
             </CardContent>
           </Card>
         ))}

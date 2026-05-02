@@ -1,22 +1,10 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Toaster } from "@/components/ui/sonner";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
-  title: "DTCCheck - Diagnóstico Automotriz con IA",
+  title: "DTCCheck - AI Automotive Diagnostics",
   description:
-    "Analiza códigos DTC con inteligencia artificial. Sube tu PDF o ingresa códigos y obtén soluciones reales de foros especializados.",
+    "Analyze DTC codes with AI. Upload your PDF or enter codes and get real solutions from specialized forums.",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -40,16 +28,5 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <html
-      lang="es"
-      suppressHydrationWarning
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">
-        {children}
-        <Toaster position="top-right" richColors />
-      </body>
-    </html>
-  );
+  return children;
 }
