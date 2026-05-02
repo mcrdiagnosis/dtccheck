@@ -52,7 +52,9 @@ Asegúrate de que:
 - Incluyas fuentes reales de foros cuando sea posible
 - INCLUYAS AL MENOS 3 videos de YouTube relevantes con URLs reales de búsqueda
 - Los costs sean estimaciones realistas
-- Los videos sean específicos para el vehículo y código DTC mencionado`;
+- Los videos sean específicos para el vehículo y código DTC mencionado
+- TODAS las URLs en sources, forum_insights.url, y video_resources.url sean URLs COMPLETAS (incluyendo https:// y la ruta completa), NO solo dominios
+- Los campos "forum" en forum_insights deben ser el nombre del foro/hilo, y "url" debe ser la URL completa al hilo o post específico`;
 
 let genAI: GoogleGenerativeAI | null = null;
 

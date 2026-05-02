@@ -262,17 +262,17 @@ export default function DiagnosticResultPage() {
                   <div className="flex-1">
                     <p className="font-medium">{cause.cause}</p>
                     {cause.sources?.length > 0 && (
-                      <div className="flex gap-1 mt-1">
-                        {cause.sources.slice(0, 2).map((src, j) => (
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        {cause.sources.slice(0, 3).map((src, j) => (
                           <a
                             key={j}
                             href={src}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-xs text-primary hover:underline"
+                            className="text-xs text-primary hover:underline break-all inline-flex items-center gap-1"
                           >
-                            <ExternalLink className="inline h-3 w-3 mr-0.5" />
-                            fuente
+                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                            {src.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").substring(0, 60)}
                           </a>
                         ))}
                       </div>
@@ -330,6 +330,22 @@ export default function DiagnosticResultPage() {
                           ))}
                         </ol>
                       </div>
+                      {sol.sources?.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                          {sol.sources.slice(0, 3).map((src, j) => (
+                            <a
+                              key={j}
+                              href={src}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline break-all inline-flex items-center gap-1"
+                            >
+                              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                              {src.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "").substring(0, 60)}
+                            </a>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -479,25 +495,25 @@ export default function DiagnosticResultPage() {
                   className="p-4 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
+                    <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-primary">
                         {insight.forum}
                       </p>
                       <p className="text-sm text-muted-foreground mt-1">
                         {insight.summary}
                       </p>
+                      {insight.url && (
+                        <a
+                          href={insight.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-primary hover:underline break-all inline-flex items-center gap-1 mt-2"
+                        >
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          {insight.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}
+                        </a>
+                      )}
                     </div>
-                    {insight.url && (
-                      <a
-                        href={insight.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        <Button variant="ghost" size="icon" className="flex-shrink-0">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </a>
-                    )}
                   </div>
                 </div>
               ))}
