@@ -20,26 +20,26 @@ export async function POST(request: NextRequest) {
 
     const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info);
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
     const id = crypto.randomUUID();
     const diagnostic = {
       id,
-      user_id: user?.id || "anonymous",
-      source: "manual",
+      user_id: "anonymous",
+      source: "manual" as const,
       raw_text: "",
       dtc_codes: aiAnalysis.dtc_codes,
       vehicle_info,
       ai_analysis: aiAnalysis,
-      status: "completed",
+      status: "completed" as const,
     };
 
-    if (user) {
-      const { error } = await supabase
-        .from("diagnostics")
-        .insert(diagnostic);
-      if (error) console.error("DB error:", error);
+    const supabase = await createClient();
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        diagnostic.user_id = user.id;
+        const { error } = await supabase.from("diagnostics").insert(diagnostic);
+        if (error) console.error("DB error:", error);
+      }
     }
 
     return NextResponse.json(diagnostic);

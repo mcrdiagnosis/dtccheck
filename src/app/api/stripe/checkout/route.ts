@@ -6,17 +6,27 @@ export async function POST(request: NextRequest) {
   try {
     const { plan } = await request.json();
     const supabase = await createClient();
+
+    if (!supabase) {
+      return NextResponse.json({ error: "Service not configured" }, { status: 503 });
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
+    const stripeKey = process.env.STRIPE_SECRET_KEY;
+    if (!stripeKey) {
+      return NextResponse.json({ error: "Payments not configured" }, { status: 503 });
+    }
 
-    const priceMap: Record<string, string> = {
-      pro: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID!,
-      premium: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID!,
+    const stripe = new Stripe(stripeKey);
+
+    const priceMap: Record<string, string | undefined> = {
+      pro: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
+      premium: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID,
     };
 
     const priceId = priceMap[plan];
@@ -49,8 +59,8 @@ export async function POST(request: NextRequest) {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/dashboard?success=true`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/pricing?canceled=true`,
     });
 
     return NextResponse.json({ url: session.url });

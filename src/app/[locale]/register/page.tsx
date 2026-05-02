@@ -29,6 +29,10 @@ export default function RegisterPage() {
     setLoading(true);
     try {
       const supabase = createClient();
+      if (!supabase) {
+        toast.error("Autenticación no configurada");
+        return;
+      }
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
       toast.success("Cuenta creada. Revisa tu email para confirmar.");

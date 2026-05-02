@@ -7,6 +7,13 @@ export async function POST(request: NextRequest) {
     const { diagnostic_id, test_results } = await request.json();
 
     const supabase = await createClient();
+    if (!supabase) {
+      return NextResponse.json(
+        { error: "Base de datos no configurada" },
+        { status: 503 }
+      );
+    }
+
     const { data: diagnostic } = await supabase
       .from("diagnostics")
       .select("*")

@@ -9,6 +9,10 @@ export async function GET(
     const { id } = await params;
     const supabase = await createClient();
 
+    if (!supabase) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
     const { data, error } = await supabase
       .from("diagnostics")
       .select("*")
@@ -32,6 +36,11 @@ export async function DELETE(
   try {
     const { id } = await params;
     const supabase = await createClient();
+
+    if (!supabase) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { data: { user } } = await supabase.auth.getUser();
 
     if (!user) {

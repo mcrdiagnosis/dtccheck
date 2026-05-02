@@ -34,26 +34,26 @@ export async function POST(request: NextRequest) {
 
     const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText);
 
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
     const id = crypto.randomUUID();
     const diagnostic = {
       id,
-      user_id: user?.id || "anonymous",
-      source: "pdf",
+      user_id: "anonymous",
+      source: "pdf" as const,
       raw_text: rawText.substring(0, 5000),
       dtc_codes: aiAnalysis.dtc_codes,
       vehicle_info: mergedVehicle,
       ai_analysis: aiAnalysis,
-      status: "completed",
+      status: "completed" as const,
     };
 
-    if (user) {
-      const { error } = await supabase
-        .from("diagnostics")
-        .insert(diagnostic);
-      if (error) console.error("DB error:", error);
+    const supabase = await createClient();
+    if (supabase) {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        diagnostic.user_id = user.id;
+        const { error } = await supabase.from("diagnostics").insert(diagnostic);
+        if (error) console.error("DB error:", error);
+      }
     }
 
     return NextResponse.json(diagnostic);
