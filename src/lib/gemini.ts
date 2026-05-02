@@ -77,7 +77,8 @@ function getModel() {
 export async function analyzeDTCs(
   dtcCodes: string[],
   vehicleInfo: VehicleInfo,
-  rawText?: string
+  rawText?: string,
+  locale?: string
 ): Promise<AIAnalysis> {
   const model = getModel();
 
@@ -111,7 +112,14 @@ Enfoca el análisis específicamente en este sistema. Las pruebas interactivas d
     userPrompt += `\n\nTexto adicional del escáner:\n${rawText.substring(0, 3000)}`;
   }
 
-  userPrompt += `\n\nProporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
+  const localeLangMap: Record<string, string> = {
+    es: "español",
+    en: "English",
+    pt: "português",
+  };
+  const responseLang = localeLangMap[locale || "es"] || "español";
+
+  userPrompt += `\n\nIMPORTANTISIMO: TODA tu respuesta (descripciones, causas, soluciones, pruebas, resumen, etc.) DEBE estar en ${responseLang}. Los campos del JSON permanecen en inglés como nombres de clave, pero los VALORES deben estar en ${responseLang}. Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
 
   const result = await model.generateContent(userPrompt);
 

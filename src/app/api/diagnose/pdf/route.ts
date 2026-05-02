@@ -14,6 +14,7 @@ export async function POST(request: NextRequest) {
     }
 
     const vehicleInfo = JSON.parse(vehicleInfoStr);
+    const locale = formData.get("locale") as string || "es";
 
     const buffer = Buffer.from(await pdfFile.arrayBuffer());
     const rawText = await extractTextFromPDF(buffer);
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
       ...Object.fromEntries(Object.entries(extractedVehicle).filter(([, v]) => v)),
     };
 
-    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText);
+    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText, locale);
 
     const id = crypto.randomUUID();
     const diagnostic = {

@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { dtc_codes, vehicle_info } = body;
+    const { dtc_codes, vehicle_info, locale } = body;
 
     if (!dtc_codes?.length || !vehicle_info?.make || !vehicle_info?.model) {
       return NextResponse.json(
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
       ? dtc_codes
       : dtc_codes.split(",").map((c: string) => c.trim().toUpperCase());
 
-    const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info);
+    const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale);
 
     const id = crypto.randomUUID();
     const diagnostic = {

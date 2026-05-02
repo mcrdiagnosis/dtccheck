@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -61,6 +61,7 @@ type DiagnoseForm = z.infer<typeof diagnoseSchema>;
 
 export default function DiagnosePage() {
   const t = useTranslations("diagnose");
+  const locale = useLocale();
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("manual");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -115,6 +116,7 @@ export default function DiagnosePage() {
     try {
       const payload: any = {
         dtc_codes: data.dtc_codes.split(",").map((c) => c.trim().toUpperCase()).filter(Boolean),
+        locale,
         vehicle_info: {
           make: data.make,
           model: data.model,
@@ -128,6 +130,7 @@ export default function DiagnosePage() {
         const formData = new FormData();
         formData.append("pdf", pdfFile);
         formData.append("vehicle_info", JSON.stringify(payload.vehicle_info));
+        formData.append("locale", locale);
 
         const res = await fetch("/api/diagnose/pdf", {
           method: "POST",
