@@ -87,7 +87,7 @@ function getVisionModel() {
 export async function extractDTCsFromPDF(
   pdfBuffer: Buffer,
   locale?: string
-): Promise<{ codes: string[]; rawText: string }> {
+): Promise<{ codes: string[]; modules: { module: string; codes: string[] }[]; rawText: string }> {
   const model = getVisionModel();
 
   const localeLangMap: Record<string, string> = {
@@ -102,33 +102,54 @@ export async function extractDTCsFromPDF(
     },
   };
 
-  const prompt = `Lee este documento PDF de un escáner OBD2 y extrae TODOS los códigos DTC que aparezcan.
+  const prompt = `Lee este documento PDF de un escáner de diagnóstico vehicular.
+
+EXTRAE TODOS los códigos de falla/diagnóstico que aparezcan en TODAS las secciones y módulos del documento.
+No te limites a códigos OBD2 estándar. Muchos escáneres muestran códigos de módulos específicos del fabricante.
+
+Los códigos pueden tener estos formatos:
+- OBD2 estándar: P0301, C0035, B0001, U0100 (letra + 4 dígitos)
+- Específicos del fabricante: P1336, P1675, etc. (con letra P/C/B/U)
+- Códigos hexadecimales o numéricos: 0171, 0092, F001, etc.
+- Códigos con guión o espacio: P0-301, P03 01
+- Cualquier código que aparezca como "código de falla", "fault code", "DTC", "error code"
+
+Organiza los códigos POR MÓDULO/SISTEMA si el documento los agrupa así (ej: ABS, Airbag, BSI, BSM, Motor, Transmisión, etc.).
 
 Responde en ${lang}. Responde SOLO en JSON con este formato exacto:
 {
-  "codes": ["P0301", "P0420"],
-  "rawText": "texto completo extraído del PDF"
+  "codes": ["P0301", "C0035", "0092"],
+  "modules": [
+    { "module": "ABS", "codes": ["C0035"] },
+    { "module": "BSI", "codes": ["0092"] }
+  ],
+  "rawText": "texto completo extraído del PDF sección por sección"
 }
 
-Si no encuentras códigos DTC, devuelve arrays vacíos pero incluye todo el texto que puedas leer del documento en rawText.
-Los códigos DTC siempre empiezan con P, C, B o U seguidos de 4 dígitos (ej: P0301, C0035, B0001, U0100).`;
+Incluye TODO el texto que puedas leer del documento en rawText, sección por sección, módulo por módulo.
+Es CRUCIAL que no omitas NINGÚN código ni NINGÚN módulo.`;
 
   const result = await model.generateContent([prompt, pdfPart]);
   const text = result.response.text();
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    return { codes: [], rawText: text };
+    return { codes: [], modules: [], rawText: text };
   }
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
+    const allCodes = (parsed.codes || []).map((c: string) => c.toUpperCase().replace(/[\s\-]/g, ""));
     return {
-      codes: (parsed.codes || []).filter((c: string) => /^[PCBU]\d{4}$/i.test(c)).map((c: string) => c.toUpperCase()),
+      codes: allCodes,
+      modules: (parsed.modules || []).map((m: any) => ({
+        module: m.module,
+        codes: (m.codes || []).map((c: string) => c.toUpperCase().replace(/[\s\-]/g, "")),
+      })),
       rawText: parsed.rawText || "",
     };
   } catch {
-    return { codes: [], rawText: text };
+    return { codes: [], modules: [], rawText: text };
   }
 }
 

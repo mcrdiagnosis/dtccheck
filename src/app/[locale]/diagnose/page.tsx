@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import {
   FileUp,
+  FileText,
   Upload,
   Loader2,
   Car,
@@ -65,6 +66,7 @@ export default function DiagnosePage() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("manual");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
@@ -95,19 +97,29 @@ export default function DiagnosePage() {
     setDragActive(false);
     const file = e.dataTransfer.files?.[0];
     if (file?.type === "application/pdf") {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       setPdfFile(file);
+      setPdfUrl(URL.createObjectURL(file));
       toast.success("PDF cargado correctamente");
     } else {
       toast.error("Por favor sube un archivo PDF");
     }
-  }, []);
+  }, [pdfUrl]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       setPdfFile(file);
+      setPdfUrl(URL.createObjectURL(file));
       toast.success("PDF cargado correctamente");
     }
+  };
+
+  const removePdf = () => {
+    if (pdfUrl) URL.revokeObjectURL(pdfUrl);
+    setPdfFile(null);
+    setPdfUrl(null);
   };
 
   const onSubmit = async (data: DiagnoseForm) => {
@@ -293,7 +305,7 @@ export default function DiagnosePage() {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        onClick={() => setPdfFile(null)}
+                        onClick={removePdf}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -354,8 +366,22 @@ export default function DiagnosePage() {
                   <Label>{t("engine")}</Label>
                   <Input placeholder="2.0L" {...form.register("engine")} />
                 </div>
-              </div>
-            </CardContent>
+                </div>
+                {pdfUrl && (
+                  <div className="mt-4 rounded-lg border overflow-hidden">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
+                      <FileText className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium truncate flex-1">{pdfFile?.name}</span>
+                      <span className="text-xs text-muted-foreground">{pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ""}</span>
+                    </div>
+                    <iframe
+                      src={pdfUrl}
+                      className="w-full h-64 md:h-96"
+                      title="Vista previa del PDF"
+                    />
+                  </div>
+                )}
+              </CardContent>
           </Card>
 
           {isAnalyzing && (

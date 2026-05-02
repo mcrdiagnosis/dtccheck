@@ -89,11 +89,21 @@ function extractFromRawStreams(buffer: Buffer): string {
 }
 
 export function extractDTCCodes(text: string): string[] {
-  const dtcPattern = /\b([PCBU]\d{4})\b/gi;
-  const matches = text.match(dtcPattern);
-  if (!matches) return [];
+  const patterns = [
+    /\b([PCBU][0-9A-Z]{2,5})(?::\d{2})?\b/gi,
+  ];
+  const matches: string[] = [];
+  for (const pattern of patterns) {
+    let m;
+    while ((m = pattern.exec(text)) !== null) {
+      const code = m[1].toUpperCase();
+      if (/^[PCBU][0-9A-Z]{3,5}$/.test(code)) {
+        matches.push(code);
+      }
+    }
+  }
 
-  const uniqueCodes = [...new Set(matches.map((c) => c.toUpperCase()))];
+  const uniqueCodes = [...new Set(matches)];
   return uniqueCodes;
 }
 

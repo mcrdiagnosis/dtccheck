@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
       console.error("PDF text extraction error:", err);
     }
 
+    let visionModules: { module: string; codes: string[] }[] = [];
+
     if (dtcCodes.length === 0 && rawText.trim().length > 10) {
       dtcCodes = extractDTCCodesLoose(rawText);
     }
@@ -38,16 +40,18 @@ export async function POST(request: NextRequest) {
         const visionResult = await extractDTCsFromPDF(buffer, locale);
         if (visionResult.codes.length > 0) {
           dtcCodes = visionResult.codes;
+          visionModules = visionResult.modules || [];
           if (!rawText || rawText.trim().length < 20) {
             rawText = visionResult.rawText;
           }
-          console.log("Gemini vision extracted codes:", dtcCodes);
+          console.log("Gemini vision extracted codes:", dtcCodes, "modules:", visionModules.map(m => m.module));
         } else if (visionResult.rawText) {
           rawText = visionResult.rawText;
           dtcCodes = extractDTCCodes(rawText);
           if (dtcCodes.length === 0) {
             dtcCodes = extractDTCCodesLoose(rawText);
           }
+          visionModules = visionResult.modules || [];
         }
       } catch (visionErr) {
         console.error("Gemini vision extraction failed:", visionErr);
@@ -67,7 +71,11 @@ export async function POST(request: NextRequest) {
       ...Object.fromEntries(Object.entries(extractedVehicle).filter(([, v]) => v)),
     };
 
-    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText, locale);
+    const moduleContext = visionModules.length > 0
+      ? `\n\nEl escáner reportó códigos en estos módulos: ${visionModules.map(m => `${m.module} (${m.codes.join(", ")})`).join("; ")}.\nAnaliza TODOS los módulos, no solo los códigos OBD2 estándar.`
+      : "";
+
+    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText + moduleContext, locale);
 
     const id = crypto.randomUUID();
     const diagnostic = {
@@ -75,6 +83,7 @@ export async function POST(request: NextRequest) {
       user_id: "anonymous",
       source: "pdf" as const,
       raw_text: rawText.substring(0, 5000),
+      modules: visionModules,
       dtc_codes: aiAnalysis.dtc_codes,
       vehicle_info: mergedVehicle,
       ai_analysis: aiAnalysis,
@@ -105,27 +114,21 @@ function extractDTCCodesLoose(text: string): string[] {
   const codes: Set<string> = new Set();
 
   const patterns = [
-    /\b([PCBU]\d{4})\b/gi,
-    /\b([PCBU]\d{2}\s?\d{2})\b/gi,
-    /DTC[:\s]*([PCBU]\d{4})/gi,
-    /Code[:\s]*([PCBU]\d{4})/gi,
-    /codigo[:\s]*([PCBU]\d{4})/gi,
-    /c[oó]digo[:\s]*([PCBU]\d{4})/gi,
-    /error[:\s]*([PCBU]\d{4})/gi,
-    /fault[:\s]*([PCBU]\d{4})/gi,
-    /\b(P|C|B|U)[\s\-_.:]?(\d{2})[\s\-_.:]?(\d{2})\b/gi,
+    /\b([PCBU][0-9A-Z]{2,5})(?::\d{2})?\b/gi,
+    /DTC[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
+    /[Cc]odigo[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
+    /[Ee]rror[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
+    /[Ff]ault[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
+    /[Dd]efecto[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
+    /\b([PCBU])[\s\-_.:]?([0-9A-Z]{2})[\s\-_.:]?([0-9A-Z]{2})([A-Z]?)(?::\d{2})?/gi,
   ];
 
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      if (match[1] && match[2] && match[3]) {
-        codes.add(`${match[1].toUpperCase()}${match[2]}${match[3]}`);
-      } else if (match[1]) {
-        const code = match[1].toUpperCase().replace(/[\s\-_.:]/g, "");
-        if (/^[PCBU]\d{4}$/.test(code)) {
-          codes.add(code);
-        }
+      const raw = match[0].toUpperCase().replace(/[\s\-_.:]/g, "").replace(/\d{2}$/, "");
+      if (/^[PCBU][0-9A-Z]{3,5}$/.test(raw) && raw.length >= 4) {
+        codes.add(raw);
       }
     }
   }
