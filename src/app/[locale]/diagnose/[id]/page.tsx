@@ -36,6 +36,7 @@ import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
 import { getDiagnosticLocal } from "@/lib/local-storage";
 import { ChatPanel } from "@/components/chat/chat-panel";
+import { AuthGate } from "@/components/auth/auth-gate";
 
 const severityMap: Record<string, string> = {
   low: "low", medium: "medium", high: "high", critical: "critical",
@@ -167,6 +168,7 @@ export default function DiagnosticResultPage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
+      <AuthGate>
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-3xl font-bold">{t("title")}</h1>
@@ -726,6 +728,8 @@ export default function DiagnosticResultPage() {
           </Card>
         )}
       </div>
+
+      </AuthGate>
 
       <button
         type="button"
