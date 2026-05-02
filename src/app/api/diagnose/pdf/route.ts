@@ -114,20 +114,19 @@ function extractDTCCodesLoose(text: string): string[] {
   const codes: Set<string> = new Set();
 
   const patterns = [
-    /\b([PCBU][0-9A-Z]{2,5})(?::\d{2})?\b/gi,
-    /DTC[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
-    /[Cc]odigo[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
-    /[Ee]rror[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
-    /[Ff]ault[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
-    /[Dd]efecto[:\s]*([PCBU][0-9A-Z]{2,5})/gi,
-    /\b([PCBU])[\s\-_.:]?([0-9A-Z]{2})[\s\-_.:]?([0-9A-Z]{2})([A-Z]?)(?::\d{2})?/gi,
+    /\b([PCBU]\d{2,4}[A-F]?)(?::\d{2})?\b/gi,
+    /DTC[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
+    /[Cc]odigo[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
+    /[Ee]rror[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
+    /[Ff]ault[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
+    /[Dd]efecto[:\s]*([PCBU]\d{2,4}[A-F]?)/gi,
   ];
 
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(text)) !== null) {
-      const raw = match[0].toUpperCase().replace(/[\s\-_.:]/g, "").replace(/\d{2}$/, "");
-      if (/^[PCBU][0-9A-Z]{3,5}$/.test(raw) && raw.length >= 4) {
+      const raw = match[1].toUpperCase();
+      if (/^[PCBU]\d{2,4}[A-F]?$/.test(raw)) {
         codes.add(raw);
       }
     }

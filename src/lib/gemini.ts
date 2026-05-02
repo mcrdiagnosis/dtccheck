@@ -104,30 +104,28 @@ export async function extractDTCsFromPDF(
 
   const prompt = `Lee este documento PDF de un escáner de diagnóstico vehicular.
 
-EXTRAE TODOS los códigos de falla/diagnóstico que aparezcan en TODAS las secciones y módulos del documento.
-No te limites a códigos OBD2 estándar. Muchos escáneres muestran códigos de módulos específicos del fabricante.
+EXTRAE TODOS los códigos de falla/diagnóstico que aparezcan en TODAS las secciones del documento.
 
-Los códigos pueden tener estos formatos:
-- OBD2 estándar: P0301, C0035, B0001, U0100 (letra + 4 dígitos)
-- Específicos del fabricante: P1336, P1675, etc. (con letra P/C/B/U)
-- Códigos hexadecimales o numéricos: 0171, 0092, F001, etc.
-- Códigos con guión o espacio: P0-301, P03 01
-- Cualquier código que aparezca como "código de falla", "fault code", "DTC", "error code"
+Los códigos DTC SIEMPRE siguen estos formatos:
+- Letra (P, C, B o U) + dígitos + opcionalmente una letra hexadecimal (A-F) al final
+- Ejemplos válidos: P0301, P0420:00, C0035, C98A, C98B, B0001, U0100
+- El formato es SIEMPRE: una letra P/C/B/U seguida de 2 a 4 dígitos, con una letra opcional (A-F) al final
+- NO son códigos válidos: PBNS7, PJBU, BSXO, PQBB (tienen letras no hexadecimales mezcladas)
 
 Organiza los códigos POR MÓDULO/SISTEMA si el documento los agrupa así (ej: ABS, Airbag, BSI, BSM, Motor, Transmisión, etc.).
 
 Responde en ${lang}. Responde SOLO en JSON con este formato exacto:
 {
-  "codes": ["P0301", "C0035", "0092"],
+  "codes": ["P0301", "C98A"],
   "modules": [
     { "module": "ABS", "codes": ["C0035"] },
-    { "module": "BSI", "codes": ["0092"] }
+    { "module": "BSI", "codes": ["C98A", "C98B"] }
   ],
-  "rawText": "texto completo extraído del PDF sección por sección"
+  "rawText": "texto completo extraído del PDF"
 }
 
-Incluye TODO el texto que puedas leer del documento en rawText, sección por sección, módulo por módulo.
-Es CRUCIAL que no omitas NINGÚN código ni NINGÚN módulo.`;
+Incluye TODO el texto que puedas leer del documento en rawText.
+Es CRUCIAL que no omitas NINGÚN código. Solo incluye códigos que realmente aparezcan en el documento.`;
 
   const result = await model.generateContent([prompt, pdfPart]);
   const text = result.response.text();
@@ -139,12 +137,13 @@ Es CRUCIAL que no omitas NINGÚN código ni NINGÚN módulo.`;
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
-    const allCodes = (parsed.codes || []).map((c: string) => c.toUpperCase().replace(/[\s\-]/g, ""));
+    const isValidCode = (c: string) => /^[PCBU]\d{2,4}[A-F]?$/i.test(c);
+    const allCodes = (parsed.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase());
     return {
       codes: allCodes,
       modules: (parsed.modules || []).map((m: any) => ({
         module: m.module,
-        codes: (m.codes || []).map((c: string) => c.toUpperCase().replace(/[\s\-]/g, "")),
+        codes: (m.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase()),
       })),
       rawText: parsed.rawText || "",
     };
