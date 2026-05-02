@@ -80,7 +80,7 @@ function getModel() {
 function getVisionModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-1.5-flash",
   });
 }
 
@@ -129,6 +129,7 @@ Es CRUCIAL que no omitas NINGÚN código. Solo incluye códigos que realmente ap
 
   const result = await model.generateContent([prompt, pdfPart]);
   const text = result.response.text();
+  console.log("Gemini vision raw response:", text.substring(0, 500));
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
@@ -137,7 +138,7 @@ Es CRUCIAL que no omitas NINGÚN código. Solo incluye códigos que realmente ap
 
   try {
     const parsed = JSON.parse(jsonMatch[0]);
-    const isValidCode = (c: string) => /^[PCBU]\d{2,4}[A-F]?$/i.test(c);
+    const isValidCode = (c: string) => /^[PCBU][0-9A-F]{2,4}$/i.test(c) || /^[PCBU]\d{2,4}[A-F]$/i.test(c);
     const allCodes = (parsed.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase());
     return {
       codes: allCodes,
