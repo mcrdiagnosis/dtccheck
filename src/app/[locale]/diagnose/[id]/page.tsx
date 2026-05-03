@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import {
@@ -31,6 +31,9 @@ import {
   Lightbulb,
   MessageSquare,
   MessageCircle,
+  Download,
+  Share2,
+  Printer,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
@@ -75,12 +78,68 @@ export default function DiagnosticResultPage() {
   const [failedThumbs, setFailedThumbs] = useState<Set<string>>(new Set());
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDtcCode, setChatDtcCode] = useState<string | null>(null);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const reportRef = useRef<HTMLDivElement>(null);
 
   const openChat = (dtcCode?: string) => {
     if (dtcCode) setChatDtcCode(dtcCode);
     else setChatDtcCode(null);
     setChatOpen(true);
   };
+
+  const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
+    if (!reportRef.current) return;
+    setGeneratingPdf(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const vehicle = diagnostic?.vehicle_info;
+      const filename = `diagnostico-${vehicle?.make || "vehiculo"}-${vehicle?.model || ""}-${vehicle?.year || ""}.pdf`.replace(/\s+/g, "-");
+
+      if (action === "print") {
+        const element = reportRef.current.cloneNode(true) as HTMLElement;
+        element.style.padding = "20px";
+        const printWin = window.open("", "_blank");
+        if (printWin) {
+          printWin.document.write(`<html><head><title>${filename}</title><style>body{font-family:system-ui;margin:20px;}table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ddd;padding:8px;text-align:left;}img{max-width:100%;}</style></head><body>${element.innerHTML}</body></html>`);
+          printWin.document.close();
+          printWin.print();
+        }
+        return;
+      }
+
+      const opt: any = {
+        margin: [10, 10, 10, 10] as [number, number, number, number],
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      };
+
+      const worker = html2pdf().from(reportRef.current).set(opt);
+
+      if (action === "share") {
+        const blob = await worker.toPdf().output("blob");
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.share) {
+          await navigator.share({ files: [file], title: "Diagnóstico DTCCheck" });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } else {
+        await worker.save();
+      }
+    } catch (err: any) {
+      console.error("PDF error:", err);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [diagnostic]);
 
   useEffect(() => {
     fetchDiagnostic();
@@ -188,7 +247,22 @@ export default function DiagnosticResultPage() {
         </Badge>
       </div>
 
-      <div className="grid gap-6">
+      <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("download")} disabled={generatingPdf}>
+          <Download className="h-4 w-4" />
+          PDF
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("share")} disabled={generatingPdf}>
+          <Share2 className="h-4 w-4" />
+          WhatsApp
+        </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("print")} disabled={generatingPdf}>
+          <Printer className="h-4 w-4" />
+          Imprimir
+        </Button>
+      </div>
+
+      <div ref={reportRef} className="grid gap-6">
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">

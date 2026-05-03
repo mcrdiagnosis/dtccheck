@@ -17,6 +17,7 @@
     "@swc/helpers": "^0.5.21",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.14.0",
     "next": "16.2.4",
     "next-intl": "^4.11.0",
