@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import {
@@ -79,67 +79,12 @@ export default function DiagnosticResultPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDtcCode, setChatDtcCode] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const reportRef = useRef<HTMLDivElement>(null);
 
   const openChat = (dtcCode?: string) => {
     if (dtcCode) setChatDtcCode(dtcCode);
     else setChatDtcCode(null);
     setChatOpen(true);
   };
-
-  const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
-    if (!reportRef.current) return;
-    setGeneratingPdf(true);
-    try {
-      const html2pdf = (await import("html2pdf.js")).default;
-      const vehicle = diagnostic?.vehicle_info;
-      const filename = `diagnostico-${vehicle?.make || "vehiculo"}-${vehicle?.model || ""}-${vehicle?.year || ""}.pdf`.replace(/\s+/g, "-");
-
-      if (action === "print") {
-        const element = reportRef.current.cloneNode(true) as HTMLElement;
-        element.style.padding = "20px";
-        const printWin = window.open("", "_blank");
-        if (printWin) {
-          printWin.document.write(`<html><head><title>${filename}</title><style>body{font-family:system-ui;margin:20px;}table{width:100%;border-collapse:collapse;}td,th{border:1px solid #ddd;padding:8px;text-align:left;}img{max-width:100%;}</style></head><body>${element.innerHTML}</body></html>`);
-          printWin.document.close();
-          printWin.print();
-        }
-        return;
-      }
-
-      const opt: any = {
-        margin: [10, 10, 10, 10] as [number, number, number, number],
-        filename,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, letterRendering: true },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" as const },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-      };
-
-      const worker = html2pdf().from(reportRef.current).set(opt);
-
-      if (action === "share") {
-        const blob = await worker.toPdf().output("blob");
-        const file = new File([blob], filename, { type: "application/pdf" });
-        if (navigator.share) {
-          await navigator.share({ files: [file], title: "Diagnóstico DTCCheck" });
-        } else {
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a");
-          a.href = url;
-          a.download = filename;
-          a.click();
-          URL.revokeObjectURL(url);
-        }
-      } else {
-        await worker.save();
-      }
-    } catch (err: any) {
-      console.error("PDF error:", err);
-    } finally {
-      setGeneratingPdf(false);
-    }
-  }, [diagnostic]);
 
   useEffect(() => {
     fetchDiagnostic();
@@ -225,6 +170,145 @@ export default function DiagnosticResultPage() {
 
   const analysis = diagnostic.ai_analysis;
 
+  const buildReportHtml = useCallback(() => {
+    const v = diagnostic?.vehicle_info;
+    const a = analysis;
+    if (!a) return "";
+
+    const sevColor: Record<string, string> = { low: "#3b82f6", medium: "#eab308", high: "#f97316", critical: "#ef4444" };
+    const diffLabel: Record<string, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
+
+    const codesHtml = (a.dtc_codes || []).map((c: any) =>
+      `<tr><td style="font-weight:bold;padding:6px 10px;border:1px solid #e5e7eb;">${c.code}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;">${c.description}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;"><span style="color:${sevColor[normalizeSeverity(c.severity)] || "#666"};font-weight:600;">${c.severity}</span></td></tr>`
+    ).join("");
+
+    const causesHtml = (a.probable_causes || []).map((c: any) =>
+      `<tr><td style="padding:6px 10px;border:1px solid #e5e7eb;">${c.cause}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;font-weight:600;">${c.probability}%</td></tr>`
+    ).join("");
+
+    const solutionsHtml = (a.solutions || []).map((s: any) =>
+      `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
+        <p style="font-weight:600;margin:0 0 4px;">${s.description}</p>
+        <p style="margin:0 0 4px;color:#666;font-size:13px;">Dificultad: ${diffLabel[normalizeDifficulty(s.difficulty)] || s.difficulty} | Costo estimado: ${s.estimated_cost}</p>
+        ${s.steps?.length ? `<ol style="margin:6px 0 0 18px;padding:0;">${s.steps.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>` : ""}
+      </div>`
+    ).join("");
+
+    const testsHtml = (a.interactive_tests || []).map((t: any, i: number) =>
+      `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
+        <p style="font-weight:600;margin:0 0 4px;">${i + 1}. ${t.name}</p>
+        <p style="margin:0 0 6px;color:#666;font-size:13px;">${t.description}</p>
+        ${t.tools_needed?.length ? `<p style="margin:0 0 4px;font-size:13px;"><b>Herramientas:</b> ${t.tools_needed.join(", ")}</p>` : ""}
+        <ol style="margin:4px 0 0 18px;padding:0;">${t.steps?.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>
+        <p style="margin:6px 0 0;font-size:13px;color:#16a34a;">Si pasa: ${t.pass_implication}</p>
+        <p style="margin:2px 0 0;font-size:13px;color:#dc2626;">Si falla: ${t.fail_implication}</p>
+      </div>`
+    ).join("");
+
+    const insightsHtml = (a.forum_insights || []).map((f: any) =>
+      `<div style="margin-bottom:8px;padding:8px 12px;border-left:3px solid #3b82f6;background:#f8fafc;border-radius:0 6px 6px 0;">
+        <p style="font-weight:600;margin:0;">${f.forum}</p>
+        <p style="margin:4px 0 0;font-size:13px;">${f.summary}</p>
+        ${f.url ? `<a href="${f.url}" style="font-size:12px;color:#3b82f6;">Ver fuente</a>` : ""}
+      </div>`
+    ).join("");
+
+    const modulesHtml = diagnostic?.modules?.length ? diagnostic.modules.map((m: any) =>
+      `<div style="margin-bottom:8px;">
+        <p style="font-weight:600;margin:0;">${m.module}</p>
+        <p style="margin:2px 0 0;color:#666;">Codigos: ${m.codes.join(", ")}</p>
+      </div>`
+    ).join("") : "";
+
+    return `<div style="font-family:system-ui,-apple-system,sans-serif;color:#111;padding:20px;max-width:800px;margin:0 auto;">
+      <div style="text-align:center;margin-bottom:24px;border-bottom:2px solid #3b82f6;padding-bottom:16px;">
+        <h1 style="margin:0;font-size:22px;color:#3b82f6;">DTCCheck - Informe de Diagnostico</h1>
+        <p style="margin:6px 0 0;font-size:15px;">${v?.year || ""} ${v?.make || ""} ${v?.model || ""} ${v?.engine || ""}</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#666;">Generado: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+      </div>
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Resumen</h2>
+        <p style="margin:0;line-height:1.6;">${a.summary || ""}</p>
+      </div>
+      ${modulesHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Modulos</h2>${modulesHtml}</div>` : ""}
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Codigos DTC</h2>
+        <table style="width:100%;border-collapse:collapse;">${codesHtml}</table>
+      </div>
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Causas Probables</h2>
+        <table style="width:100%;border-collapse:collapse;">${causesHtml}</table>
+      </div>
+      <div style="margin-bottom:20px;">
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Soluciones</h2>
+        ${solutionsHtml}
+      </div>
+      ${testsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Pruebas Interactivas</h2>${testsHtml}</div>` : ""}
+      ${insightsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Foros</h2>${insightsHtml}</div>` : ""}
+      <div style="text-align:center;margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#999;">
+        Generado por DTCCheck - ${new Date().toLocaleDateString()}
+      </div>
+    </div>`;
+  }, [diagnostic, analysis]);
+
+  const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
+    setGeneratingPdf(true);
+    try {
+      const html2pdf = (await import("html2pdf.js")).default;
+      const v = diagnostic?.vehicle_info;
+      const filename = `diagnostico-${v?.make || "vehiculo"}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
+      const html = buildReportHtml();
+
+      if (action === "print") {
+        const printWin = window.open("", "_blank");
+        if (printWin) {
+          printWin.document.write(`<html><head><title>${filename}</title></head><body style="margin:0;">${html}</body></html>`);
+          printWin.document.close();
+          printWin.print();
+        }
+        return;
+      }
+
+      const container = document.createElement("div");
+      container.innerHTML = html;
+      document.body.appendChild(container);
+
+      const opt: any = {
+        margin: [10, 10, 10, 10],
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      };
+
+      const worker = html2pdf().from(container).set(opt);
+
+      if (action === "share") {
+        const blob = await worker.toPdf().output("blob");
+        document.body.removeChild(container);
+        const file = new File([blob], filename, { type: "application/pdf" });
+        if (navigator.share) {
+          await navigator.share({ files: [file], title: "Diagnostico DTCCheck" });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = filename;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      } else {
+        await worker.save();
+        document.body.removeChild(container);
+      }
+    } catch (err: any) {
+      console.error("PDF error:", err);
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [diagnostic, buildReportHtml]);
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <AuthGate>
@@ -262,7 +346,7 @@ export default function DiagnosticResultPage() {
         </Button>
       </div>
 
-      <div ref={reportRef} className="grid gap-6">
+      <div className="grid gap-6">
         <Card className="border-primary/20">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
