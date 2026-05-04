@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
+  const tMsg = useTranslations("authMessages");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ export default function LoginPage() {
     try {
       const supabase = createClient();
       if (!supabase) {
-        toast.error("Autenticación no configurada");
+        toast.error(tMsg("notConfigured"));
         return;
       }
       const { error } = await supabase.auth.signInWithPassword({
@@ -32,10 +33,10 @@ export default function LoginPage() {
         password,
       });
       if (error) throw error;
-      toast.success("Sesión iniciada");
+      toast.success(tMsg("loginSuccess"));
       router.push("/dashboard");
     } catch (err: any) {
-      toast.error(err.message || "Error al iniciar sesión");
+      toast.error(err.message || tMsg("loginError"));
     } finally {
       setLoading(false);
     }

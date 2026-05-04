@@ -70,6 +70,7 @@ const statusIcons = {
 
 export default function DiagnosticResultPage() {
   const t = useTranslations("result");
+  const tChat = useTranslations("chat");
   const params = useParams();
   const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
   const [testResults, setTestResults] = useState<Record<string, TestResult>>({});
@@ -154,7 +155,11 @@ export default function DiagnosticResultPage() {
     if (!a) return "";
 
     const sevColor: Record<string, string> = { low: "#3b82f6", medium: "#eab308", high: "#f97316", critical: "#ef4444" };
-    const diffLabel: Record<string, string> = { easy: "Fácil", medium: "Media", hard: "Difícil" };
+    const diffLabel: Record<string, string> = {
+      easy: t("difficulty.easy"),
+      medium: t("difficulty.medium"),
+      hard: t("difficulty.hard"),
+    };
 
     const codesHtml = (a.dtc_codes || []).map((c: any) =>
       `<tr><td style="font-weight:bold;padding:6px 10px;border:1px solid #e5e7eb;">${c.code}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;">${c.description}</td><td style="padding:6px 10px;border:1px solid #e5e7eb;text-align:center;"><span style="color:${sevColor[normalizeSeverity(c.severity)] || "#666"};font-weight:600;">${c.severity}</span></td></tr>`
@@ -167,7 +172,7 @@ export default function DiagnosticResultPage() {
     const solutionsHtml = (a.solutions || []).map((s: any) =>
       `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
         <p style="font-weight:600;margin:0 0 4px;">${s.description}</p>
-        <p style="margin:0 0 4px;color:#666;font-size:13px;">Dificultad: ${diffLabel[normalizeDifficulty(s.difficulty)] || s.difficulty} | Costo estimado: ${s.estimated_cost}</p>
+        <p style="margin:0 0 4px;color:#666;font-size:13px;">${t("pdf.difficulty")} ${diffLabel[normalizeDifficulty(s.difficulty)] || s.difficulty} | ${t("pdf.estimatedCost")} ${s.estimated_cost}</p>
         ${s.steps?.length ? `<ol style="margin:6px 0 0 18px;padding:0;">${s.steps.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>` : ""}
       </div>`
     ).join("");
@@ -176,10 +181,10 @@ export default function DiagnosticResultPage() {
       `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
         <p style="font-weight:600;margin:0 0 4px;">${i + 1}. ${t.name}</p>
         <p style="margin:0 0 6px;color:#666;font-size:13px;">${t.description}</p>
-        ${t.tools_needed?.length ? `<p style="margin:0 0 4px;font-size:13px;"><b>Herramientas:</b> ${t.tools_needed.join(", ")}</p>` : ""}
+        ${t.tools_needed?.length ? `<p style="margin:0 0 4px;font-size:13px;"><b>${t("pdf.tools")}</b> ${t.tools_needed.join(", ")}</p>` : ""}
         <ol style="margin:4px 0 0 18px;padding:0;">${t.steps?.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>
-        <p style="margin:6px 0 0;font-size:13px;color:#16a34a;">Si pasa: ${t.pass_implication}</p>
-        <p style="margin:2px 0 0;font-size:13px;color:#dc2626;">Si falla: ${t.fail_implication}</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#16a34a;">${t("pdf.ifPasses")} ${t.pass_implication}</p>
+        <p style="margin:2px 0 0;font-size:13px;color:#dc2626;">${t("pdf.ifFails")} ${t.fail_implication}</p>
       </div>`
     ).join("");
 
@@ -187,54 +192,54 @@ export default function DiagnosticResultPage() {
       `<div style="margin-bottom:8px;padding:8px 12px;border-left:3px solid #3b82f6;background:#f8fafc;border-radius:0 6px 6px 0;">
         <p style="font-weight:600;margin:0;">${f.forum}</p>
         <p style="margin:4px 0 0;font-size:13px;">${f.summary}</p>
-        ${f.url ? `<a href="${f.url}" style="font-size:12px;color:#3b82f6;">Ver fuente</a>` : ""}
+        ${f.url ? `<a href="${f.url}" style="font-size:12px;color:#3b82f6;">${t("pdf.viewSource")}</a>` : ""}
       </div>`
     ).join("");
 
     const modulesHtml = diagnostic?.modules?.length ? diagnostic.modules.map((m: any) =>
       `<div style="margin-bottom:8px;">
         <p style="font-weight:600;margin:0;">${m.module}</p>
-        <p style="margin:2px 0 0;color:#666;">Codigos: ${m.codes.join(", ")}</p>
+        <p style="margin:2px 0 0;color:#666;">${t("pdf.dtcCodes")}: ${m.codes.join(", ")}</p>
       </div>`
     ).join("") : "";
 
     return `<div style="font-family:system-ui,-apple-system,sans-serif;color:#111;padding:20px;max-width:800px;margin:0 auto;">
       <div style="text-align:center;margin-bottom:24px;border-bottom:2px solid #3b82f6;padding-bottom:16px;">
-        <h1 style="margin:0;font-size:22px;color:#3b82f6;">DTCCheck - Informe de Diagnostico</h1>
+        <h1 style="margin:0;font-size:22px;color:#3b82f6;">${t("pdf.title")}</h1>
         <p style="margin:6px 0 0;font-size:15px;">${v?.year || ""} ${v?.make || ""} ${v?.model || ""} ${v?.engine || ""}</p>
-        <p style="margin:4px 0 0;font-size:12px;color:#666;">Generado: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#666;">${t("pdf.generated")} ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Resumen</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.summary")}</h2>
         <p style="margin:0;line-height:1.6;">${a.summary || ""}</p>
       </div>
-      ${modulesHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Modulos</h2>${modulesHtml}</div>` : ""}
+      ${modulesHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.modules")}</h2>${modulesHtml}</div>` : ""}
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Codigos DTC</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.dtcCodes")}</h2>
         <table style="width:100%;border-collapse:collapse;">${codesHtml}</table>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Causas Probables</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.causes")}</h2>
         <table style="width:100%;border-collapse:collapse;">${causesHtml}</table>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Soluciones</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.solutions")}</h2>
         ${solutionsHtml}
       </div>
-      ${testsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Pruebas Interactivas</h2>${testsHtml}</div>` : ""}
-      ${insightsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">Foros</h2>${insightsHtml}</div>` : ""}
+      ${testsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.tests")}</h2>${testsHtml}</div>` : ""}
+      ${insightsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.forums")}</h2>${insightsHtml}</div>` : ""}
       <div style="text-align:center;margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#999;">
-        Generado por DTCCheck - ${new Date().toLocaleDateString()}
+        ${t("pdf.footer")} - ${new Date().toLocaleDateString()}
       </div>
     </div>`;
-  }, [diagnostic]);
+  }, [diagnostic, t]);
 
   const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
     setGeneratingPdf(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const v = diagnostic?.vehicle_info;
-      const filename = `diagnostico-${v?.make || "vehiculo"}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
+      const filename = `${t("pdf.diagnosis")}${v?.make || t("pdf.vehicle")}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
       const html = buildReportHtml();
       if (!html) { setGeneratingPdf(false); return; }
 
@@ -268,7 +273,7 @@ export default function DiagnosticResultPage() {
         document.body.removeChild(container);
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.share) {
-          await navigator.share({ files: [file], title: "Diagnostico DTCCheck" });
+          await navigator.share({ files: [file], title: t("shareTitle") });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -286,7 +291,7 @@ export default function DiagnosticResultPage() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [diagnostic, buildReportHtml]);
+  }, [diagnostic, buildReportHtml, t]);
 
   if (loading) {
     return (
@@ -300,9 +305,9 @@ export default function DiagnosticResultPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold">Diagnóstico no encontrado</h2>
+        <h2 className="text-xl font-semibold">{t("notFound")}</h2>
         <Link href="/diagnose">
-          <Button className="mt-4">Nuevo diagnóstico</Button>
+          <Button className="mt-4">{t("newDiagnosis")}</Button>
         </Link>
       </div>
     );
@@ -339,11 +344,11 @@ export default function DiagnosticResultPage() {
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("share")} disabled={generatingPdf}>
           <Share2 className="h-4 w-4" />
-          WhatsApp
+          {t("whatsapp")}
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("print")} disabled={generatingPdf}>
           <Printer className="h-4 w-4" />
-          Imprimir
+          {t("print")}
         </Button>
       </div>
 
@@ -393,7 +398,7 @@ export default function DiagnosticResultPage() {
                           {mod.module}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {mod.codes.length} {mod.codes.length === 1 ? "código" : "códigos"}
+                          {mod.codes.length} {mod.codes.length === 1 ? t("code") : t("codes")}
                         </span>
                       </div>
                       {mod.details && (
@@ -409,7 +414,7 @@ export default function DiagnosticResultPage() {
                               type="button"
                               onClick={() => openChat(dtc.code)}
                               className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
-                              title="Preguntar sobre este código"
+                              title={t("askAboutCode")}
                             >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </button>
@@ -417,7 +422,7 @@ export default function DiagnosticResultPage() {
                             <p className="text-sm mt-1">{dtc.description}</p>
                             {mod.descriptions?.[dtc.code] && mod.descriptions[dtc.code] !== dtc.description && (
                               <p className="text-xs text-muted-foreground mt-0.5 italic">
-                                Informe: {mod.descriptions[dtc.code]}
+                                {t("report")} {mod.descriptions[dtc.code]}
                               </p>
                             )}
                             <Badge variant="outline" className="mt-2 text-xs">
@@ -434,13 +439,13 @@ export default function DiagnosticResultPage() {
                               type="button"
                               onClick={() => openChat(code)}
                               className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
-                              title="Preguntar sobre este código"
+                              title={t("askAboutCode")}
                             >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </button>
                             <p className="font-mono font-bold">{code}</p>
                             <p className="text-sm mt-1 text-muted-foreground">
-                              {mod.descriptions?.[code] || "Sin descripción disponible"}
+                              {mod.descriptions?.[code] || t("noDescription")}
                             </p>
                           </div>
                         ))}
@@ -459,7 +464,7 @@ export default function DiagnosticResultPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline" className="text-sm font-semibold">
-                        Otros
+                        {t("others")}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-3 ml-2">
@@ -660,7 +665,7 @@ export default function DiagnosticResultPage() {
                     {t("tests")}
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    Realiza estas pruebas para completar el diagnóstico
+                    {t("completeTests")}
                   </CardDescription>
                 </div>
                 {Object.keys(testResults).length > 0 && (
@@ -747,7 +752,7 @@ export default function DiagnosticResultPage() {
 
                         <div className="flex gap-2">
                           <p className="text-sm font-medium self-center mr-2">
-                            Resultado:
+                            {t("resultLabel")}
                           </p>
                           {(["passed", "failed", "skipped"] as const).map((status) => (
                             <Button
@@ -824,9 +829,9 @@ export default function DiagnosticResultPage() {
                 <svg className="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                 </svg>
-                Videos de YouTube
+                {t("youtubeVideos")}
               </CardTitle>
-              <CardDescription>Videos relacionados con este diagnóstico</CardDescription>
+              <CardDescription>{t("youtubeDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -860,7 +865,7 @@ export default function DiagnosticResultPage() {
                             <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M21.21 3.79a.996.996 0 0 0-1.09-.21C19.44 3.89 17.56 4.5 16 4.5c-2.46 0-4.54-1.56-6-3.12-.46-.46-1.26-.32-1.53.24C7.37 4.2 6 6.84 6 9.5c0 3.59 2.41 6.59 5.68 7.61A5.465 5.465 0 0 0 11 18.5v.5H9c-.55 0-1 .45-1 1s.45 1 1 1h6c.55 0 1-.45 1-1s-.45-1-1-1h-2v-.5c0-.49-.1-.96-.27-1.39C16.16 15.87 19 12.56 19 8.5c0-1.37-.29-2.67-.81-3.86.95-.34 1.95-.8 2.71-1.29.68-.44.69-1.37.31-1.56z"/>
                             </svg>
-                            <span className="text-xs">Buscar en YouTube</span>
+                            <span className="text-xs">{t("searchYoutube")}</span>
                           </div>
                         )}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors pointer-events-none">
@@ -884,9 +889,9 @@ export default function DiagnosticResultPage() {
                           </p>
                         )}
                         {(thumbFailed || !videoId) && (
-                          <p className="text-xs text-primary mt-1">
-                            Buscar videos reales →
-                          </p>
+                            <p className="text-xs text-primary mt-1">
+                              {t("searchRealVideos")}
+                            </p>
                         )}
                       </div>
                     </a>
@@ -904,7 +909,7 @@ export default function DiagnosticResultPage() {
         type="button"
         onClick={() => openChat()}
         className="fixed bottom-6 right-6 h-14 w-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-all hover:scale-105 flex items-center justify-center z-30"
-        title="Chat con mecánico IA"
+        title={tChat("chatWithAi")}
       >
         <MessageCircle className="h-6 w-6" />
       </button>

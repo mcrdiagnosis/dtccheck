@@ -2,59 +2,20 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, Zap, Crown, Loader2 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 
-const plans = [
-  {
-    key: "free",
-    price: "$0",
-    features: [
-      { text: "3 diagnósticos/mes", included: true },
-      { text: "Ingreso manual de DTC", included: true },
-      { text: "Subir PDF", included: false },
-      { text: "Búsqueda en foros", included: false },
-      { text: "Pruebas interactivas", included: false },
-      { text: "Historial 7 días", included: true },
-      { text: "Exportar reporte", included: false },
-    ],
-    cta: "Plan actual",
-    popular: false,
-  },
-  {
-    key: "pro",
-    price: "$9.99",
-    features: [
-      { text: "30 diagnósticos/mes", included: true },
-      { text: "Ingreso manual de DTC", included: true },
-      { text: "Subir PDF", included: true },
-      { text: "Búsqueda en foros", included: true },
-      { text: "5 pruebas/diagnóstico", included: true },
-      { text: "Historial 1 año", included: true },
-      { text: "Exportar reporte PDF", included: true },
-    ],
-    cta: "Suscribirse",
-    popular: true,
-  },
-  {
-    key: "premium",
-    price: "$19.99",
-    features: [
-      { text: "Diagnósticos ilimitados", included: true },
-      { text: "Ingreso manual de DTC", included: true },
-      { text: "Subir PDF", included: true },
-      { text: "Búsqueda en foros", included: true },
-      { text: "Pruebas ilimitadas", included: true },
-      { text: "Historial ilimitado", included: true },
-      { text: "Exportar + compartir", included: true },
-    ],
-    cta: "Suscribirse",
-    popular: false,
-  },
-];
+const planKeys = ["free", "pro", "premium"] as const;
+const featureKeys = ["diagnostics", "manualDtc", "pdfUpload", "forumSearch", "interactiveTests", "history", "exportReport"] as const;
+
+const planConfig = {
+  free: { price: "$0", popular: false, included: [true, true, false, false, false, true, false] },
+  pro: { price: "$9.99", popular: true, included: [true, true, true, true, true, true, true] },
+  premium: { price: "$19.99", popular: false, included: [true, true, true, true, true, true, true] },
+};
 
 export default function PricingPage() {
   const t = useTranslations("pricing");
@@ -85,69 +46,72 @@ export default function PricingPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <Card
-            key={plan.key}
-            className={`relative ${
-              plan.popular ? "border-primary shadow-lg shadow-primary/10" : ""
-            }`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="gap-1">
-                  <Zap className="h-3 w-3" />
-                  Popular
-                </Badge>
-              </div>
-            )}
-            <CardHeader className="text-center pb-2">
-              <CardTitle className="text-xl">
-                {plan.key === "pro" && <Zap className="inline h-5 w-5 mr-1 text-primary" />}
-                {plan.key === "premium" && <Crown className="inline h-5 w-5 mr-1 text-amber-500" />}
-                {t(plan.key as any)}
-              </CardTitle>
-              <div className="mt-4">
-                <span className="text-4xl font-bold">{plan.price}</span>
-                {plan.price !== "$0" && (
-                  <span className="text-muted-foreground">{t("month")}</span>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                {plan.features.map((feature, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm">
-                    {feature.included ? (
-                      <Check className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                    ) : (
-                      <div className="h-4 w-4 flex-shrink-0 rounded-full border border-muted-foreground/30" />
-                    )}
-                    <span className={feature.included ? "" : "text-muted-foreground"}>
-                      {feature.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
-              {plan.key === "free" ? (
-                <Link href="/diagnose">
-                  <Button className="w-full" variant="outline">
-                    {plan.cta}
-                  </Button>
-                </Link>
-              ) : (
-                <Button
-                  className="w-full"
-                  variant={plan.popular ? "default" : "outline"}
-                  onClick={() => handleSubscribe(plan.key)}
-                  disabled={loadingPlan === plan.key}
-                >
-                  {loadingPlan === plan.key && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  {plan.cta}
-                </Button>
+        {planKeys.map((key) => {
+          const config = planConfig[key];
+          return (
+            <Card
+              key={key}
+              className={`relative ${
+                config.popular ? "border-primary shadow-lg shadow-primary/10" : ""
+              }`}
+            >
+              {config.popular && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="gap-1">
+                    <Zap className="h-3 w-3" />
+                    {t("popular")}
+                  </Badge>
+                </div>
               )}
-            </CardContent>
-          </Card>
-        ))}
+              <CardHeader className="text-center pb-2">
+                <CardTitle className="text-xl">
+                  {key === "pro" && <Zap className="inline h-5 w-5 mr-1 text-primary" />}
+                  {key === "premium" && <Crown className="inline h-5 w-5 mr-1 text-amber-500" />}
+                  {t(key as any)}
+                </CardTitle>
+                <div className="mt-4">
+                  <span className="text-4xl font-bold">{config.price}</span>
+                  {config.price !== "$0" && (
+                    <span className="text-muted-foreground">{t("month")}</span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  {featureKeys.map((fk, i) => (
+                    <div key={fk} className="flex items-center gap-2 text-sm">
+                      {config.included[i] ? (
+                        <Check className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                      ) : (
+                        <div className="h-4 w-4 flex-shrink-0 rounded-full border border-muted-foreground/30" />
+                      )}
+                      <span className={config.included[i] ? "" : "text-muted-foreground"}>
+                        {t(`${key}Features.${fk}` as any)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {key === "free" ? (
+                  <Link href="/diagnose">
+                    <Button className="w-full" variant="outline">
+                      {t("currentPlan")}
+                    </Button>
+                  </Link>
+                ) : (
+                  <Button
+                    className="w-full"
+                    variant={config.popular ? "default" : "outline"}
+                    onClick={() => handleSubscribe(key)}
+                    disabled={loadingPlan === key}
+                  >
+                    {loadingPlan === key && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    {t("subscribe")}
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

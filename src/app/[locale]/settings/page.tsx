@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 
 export default function SettingsPage() {
   const t = useTranslations("nav");
+  const tSettings = useTranslations("settings");
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-2xl">
@@ -22,7 +23,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              Perfil
+              {tSettings("profile")}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -37,7 +38,7 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Plan actual
+              {tSettings("currentPlan")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -46,7 +47,7 @@ export default function SettingsPage() {
                 <Badge variant="outline">Free</Badge>
               </div>
               <Link href="/pricing">
-                <Button variant="outline" size="sm">Cambiar plan</Button>
+                <Button variant="outline" size="sm">{tSettings("changePlan")}</Button>
               </Link>
             </div>
           </CardContent>

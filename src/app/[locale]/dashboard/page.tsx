@@ -40,6 +40,7 @@ const statusColors: Record<string, string> = {
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
   const tResult = useTranslations("result");
+  const tCommon = useTranslations("common");
   const [diagnostics, setDiagnostics] = useState<Diagnostic[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -89,7 +90,7 @@ export default function DashboardPage() {
         <Link href="/diagnose">
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
-            Nuevo
+            {t("new")}
           </Button>
         </Link>
       </div>
@@ -162,13 +163,13 @@ export default function DashboardPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>{t("deleteConfirm")}</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Esta acción no se puede deshacer.
+                          {t("cannotUndo")}
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>{tCommon("cancel")}</AlertDialogCancel>
                         <AlertDialogAction onClick={() => deleteDiagnostic(diag.id)}>
-                          Eliminar
+                          {tCommon("delete")}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

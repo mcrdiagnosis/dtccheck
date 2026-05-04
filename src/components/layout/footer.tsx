@@ -4,6 +4,7 @@ import { Car } from "lucide-react";
 
 export function Footer() {
   const t = useTranslations("common");
+  const tNav = useTranslations("nav");
 
   return (
     <footer className="border-t border-border/40 bg-background/50">
@@ -14,7 +15,7 @@ export function Footer() {
         </div>
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <Link href="/pricing" className="hover:text-foreground transition-colors">
-            Planes
+            {tNav("pricing")}
           </Link>
           <span>Powered by Google Gemini</span>
         </div>

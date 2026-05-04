@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,6 +13,7 @@ interface AuthGateProps {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
+  const t = useTranslations("authGate");
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [checking, setChecking] = useState(true);
 
@@ -49,25 +51,25 @@ export function AuthGate({ children }: AuthGateProps) {
             <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto">
               <Lock className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-2xl font-bold">Resultado del diagnóstico</h2>
+            <h2 className="text-2xl font-bold">{t("title")}</h2>
             <p className="text-muted-foreground">
-              El análisis se completó correctamente. Crea una cuenta gratuita para ver el resultado completo con todas las soluciones, pruebas y recomendaciones.
+              {t("description")}
             </p>
             <div className="space-y-3 pt-2">
               <Link href="/register">
                 <Button className="w-full gap-2" size="lg">
                   <Zap className="h-4 w-4" />
-                  Ver resultado - Es gratis
+                  {t("viewResult")}
                 </Button>
               </Link>
               <Link href="/login">
                 <Button variant="outline" className="w-full" size="lg">
-                  Ya tengo cuenta
+                  {t("hasAccount")}
                 </Button>
               </Link>
             </div>
             <p className="text-xs text-muted-foreground pt-2">
-              Sin tarjeta de crédito. Cuenta gratuita con 3 diagnósticos al mes.
+              {t("noCreditCard")}
             </p>
           </CardContent>
         </Card>

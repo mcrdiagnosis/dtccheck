@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { X, Send, Loader2, MessageCircle, Wrench, Plus, Trash2, MessageSquare, RefreshCw } from "lucide-react";
@@ -35,6 +36,7 @@ export function ChatPanel({
   onClose,
   onAnalysisUpdate,
 }: ChatPanelProps) {
+  const t = useTranslations("chat");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
@@ -139,14 +141,14 @@ export function ChatPanel({
         }),
       });
 
-      if (!res.ok) throw new Error("Error en el chat");
+      if (!res.ok) throw new Error(t("chatError"));
       const data = await res.json();
       const assistantMsg: ChatMessage = { role: "assistant", content: data.response };
       setMessages((prev) => [...prev, assistantMsg]);
       addMessage(activeId, assistantMsg);
       loadConversations();
     } catch (err: any) {
-      toast.error(err.message || "Error al enviar mensaje");
+      toast.error(err.message || t("sendError"));
     } finally {
       setLoading(false);
     }
@@ -171,12 +173,12 @@ export function ChatPanel({
         }),
       });
 
-      if (!res.ok) throw new Error("Error actualizando informe");
+      if (!res.ok) throw new Error(t("updateError"));
       const data = await res.json();
       onAnalysisUpdate(data.analysis);
-      toast.success("Informe actualizado con la información del chat");
+      toast.success(t("reportUpdated"));
     } catch (err: any) {
-      toast.error(err.message || "Error al actualizar informe");
+      toast.error(err.message || t("updateErrorFallback"));
     } finally {
       setUpdatingReport(false);
     }
@@ -207,15 +209,15 @@ export function ChatPanel({
               <Wrench className="h-4 w-4 text-primary-foreground" />
             </div>
             <div>
-              <p className="text-sm font-semibold">Mecánico IA</p>
+              <p className="text-sm font-semibold">{t("title")}</p>
               {dtcCode && <p className="text-xs text-muted-foreground">DTC: {dtcCode}</p>}
             </div>
           </div>
           <div className="flex items-center gap-1">
-            <Button variant="ghost" size="icon" onClick={() => setShowList(!showList)} title="Conversaciones">
+            <Button variant="ghost" size="icon" onClick={() => setShowList(!showList)} title={t("conversations")}>
               <MessageSquare className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => handleNewChat()} title="Nuevo chat">
+            <Button variant="ghost" size="icon" onClick={() => handleNewChat()} title={t("newChat")}>
               <Plus className="h-4 w-4" />
             </Button>
             <Button variant="ghost" size="icon" onClick={onClose}>
@@ -232,7 +234,7 @@ export function ChatPanel({
                 className="w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted flex items-center gap-2 text-primary"
               >
                 <Plus className="h-4 w-4" />
-                Nuevo chat general
+                {t("newGeneralChat")}
               </button>
               {conversations.map((conv) => (
                 <div key={conv.id} className="flex items-center gap-1">
@@ -252,7 +254,7 @@ export function ChatPanel({
                 </div>
               ))}
               {conversations.length === 0 && (
-                <p className="text-xs text-muted-foreground px-3 py-2">No hay conversaciones</p>
+                <p className="text-xs text-muted-foreground px-3 py-2">{t("noConversations")}</p>
               )}
             </div>
           </div>
@@ -262,7 +264,7 @@ export function ChatPanel({
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground gap-3">
               <MessageCircle className="h-12 w-12" />
-              <p className="text-sm">Pregunta lo que quieras sobre el diagnóstico</p>
+              <p className="text-sm">{t("emptyState")}</p>
             </div>
           )}
           {messages.map((msg, i) => (
@@ -301,7 +303,7 @@ export function ChatPanel({
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
-              {updatingReport ? "Actualizando informe..." : "Actualizar informe con esta info"}
+              {updatingReport ? t("updatingReport") : t("updateReport")}
             </Button>
           </div>
         )}
@@ -313,7 +315,7 @@ export function ChatPanel({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Escribe tu pregunta..."
+              placeholder={t("placeholder")}
               disabled={loading}
               className="flex-1"
             />

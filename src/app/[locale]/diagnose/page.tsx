@@ -36,17 +36,17 @@ import { toast } from "sonner";
 import { Controller } from "react-hook-form";
 
 const MODULE_OPTIONS = [
-  { value: "engine", label: "Motor / Engine (P0xxx)", icon: "🔧" },
-  { value: "transmission", label: "Transmisión (P07xx)", icon: "⚙️" },
-  { value: "abs", label: "ABS / Frenos (C0xxx)", icon: "🛞" },
-  { value: "airbag", label: "Airbag / SRS (B0xxx)", icon: "🛡️" },
-  { value: "body", label: "Carrocería (B1xxx)", icon: "🚗" },
-  { value: "chassis", label: "Chasis / Suspensión (C1xxx)", icon: "🔩" },
-  { value: "network", label: "Comunicación / CAN (U0xxx)", icon: "📡" },
-  { value: "emissions", label: "Emisiones (P04xx)", icon: "💨" },
-  { value: "fuel", label: "Combustible (P01xx)", icon: "⛽" },
-  { value: "ignition", label: "Encendido (P03xx)", icon: "⚡" },
-  { value: "other", label: "Otro / No sé", icon: "❓" },
+  { value: "engine", labelKey: "engine", icon: "🔧" },
+  { value: "transmission", labelKey: "transmission", icon: "⚙️" },
+  { value: "abs", labelKey: "abs", icon: "🛞" },
+  { value: "airbag", labelKey: "airbag", icon: "🛡️" },
+  { value: "body", labelKey: "body", icon: "🚗" },
+  { value: "chassis", labelKey: "chassis", icon: "🔩" },
+  { value: "network", labelKey: "communication", icon: "📡" },
+  { value: "emissions", labelKey: "emissions", icon: "💨" },
+  { value: "fuel", labelKey: "fuel", icon: "⛽" },
+  { value: "ignition", labelKey: "ignition", icon: "⚡" },
+  { value: "other", labelKey: "other", icon: "❓" },
 ];
 
 const diagnoseSchema = z.object({
@@ -102,9 +102,9 @@ export default function DiagnosePage() {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       setPdfFile(file);
       setPdfUrl(URL.createObjectURL(file));
-      toast.success("PDF cargado correctamente");
+      toast.success(t("pdfLoaded"));
     } else {
-      toast.error("Por favor sube un archivo PDF");
+      toast.error(t("pdfRequired"));
     }
   }, [pdfUrl]);
 
@@ -114,7 +114,7 @@ export default function DiagnosePage() {
       if (pdfUrl) URL.revokeObjectURL(pdfUrl);
       setPdfFile(file);
       setPdfUrl(URL.createObjectURL(file));
-      toast.success("PDF cargado correctamente");
+      toast.success(t("pdfLoaded"));
     }
   };
 
@@ -126,12 +126,12 @@ export default function DiagnosePage() {
 
   const onSubmit = async (data: DiagnoseForm) => {
     if (activeTab === "manual" && (!data.dtc_codes || data.dtc_codes.trim() === "")) {
-      form.setError("dtc_codes", { message: "Ingresa al menos un código DTC" });
+      form.setError("dtc_codes", { message: t("dtcRequired") });
       return;
     }
 
     if (activeTab === "pdf" && !pdfFile) {
-      toast.error("Por favor sube un archivo PDF");
+      toast.error(t("pdfRequired"));
       return;
     }
 
@@ -176,7 +176,7 @@ export default function DiagnosePage() {
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.error || "Error procesando PDF");
+          throw new Error(errData.error || t("pdfError"));
         }
         const result = await res.json();
         saveDiagnosticLocal(result);
@@ -190,7 +190,7 @@ export default function DiagnosePage() {
           body: JSON.stringify(payload),
         });
 
-        if (!res.ok) throw new Error("Error en el análisis");
+        if (!res.ok) throw new Error(t("analysisError"));
         const result = await res.json();
         saveDiagnosticLocal(result);
         clearInterval(progressInterval);
@@ -199,7 +199,7 @@ export default function DiagnosePage() {
       }
     } catch (error: any) {
       clearInterval(progressInterval);
-      toast.error(error.message || "Error al analizar");
+      toast.error(error.message || t("analysisErrorFallback"));
     } finally {
       if (timerRef.current) clearInterval(timerRef.current);
       setIsAnalyzing(false);
@@ -264,7 +264,7 @@ export default function DiagnosePage() {
                           {MODULE_OPTIONS.map((mod) => (
                             <SelectItem key={mod.value} value={mod.value}>
                               <span className="mr-2">{mod.icon}</span>
-                              {mod.label}
+                              {t(`modules.${mod.labelKey}` as any)}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -385,7 +385,7 @@ export default function DiagnosePage() {
                     <iframe
                       src={pdfUrl}
                       className="w-full h-64 md:h-96"
-                      title="Vista previa del PDF"
+                      title={t("pdfPreview")}
                     />
                   </div>
                 )}
@@ -402,7 +402,7 @@ export default function DiagnosePage() {
                 </div>
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-muted-foreground mt-2">
-                  Buscando en foros y analizando códigos...
+                  {t("analyzingProgress")}
                 </p>
               </CardContent>
             </Card>

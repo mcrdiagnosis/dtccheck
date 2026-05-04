@@ -120,20 +120,20 @@ export default function HomePage() {
             <div className="flex items-center justify-center gap-6 mb-8">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Shield className="h-4 w-4 text-emerald-500" />
-                Seguro
+                {t("secure")}
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Search className="h-4 w-4 text-blue-500" />
-                Búsqueda en foros
+                {t("forumSearch")}
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Zap className="h-4 w-4 text-amber-500" />
-                Resultados rápidos
+                {t("fastResults")}
               </div>
             </div>
             <Link href="/diagnose">
               <Button size="lg" variant="outline" className="gap-2">
-                Comenzar ahora
+                {t("startNow")}
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>

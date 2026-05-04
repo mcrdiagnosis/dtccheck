@@ -13,6 +13,7 @@ import { createClient } from "@/lib/supabase/client";
 
 export default function RegisterPage() {
   const t = useTranslations("auth");
+  const tMsg = useTranslations("authMessages");
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -22,22 +23,22 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden");
+      toast.error(tMsg("passwordMismatch"));
       return;
     }
     setLoading(true);
     try {
       const supabase = createClient();
       if (!supabase) {
-        toast.error("Autenticación no configurada");
+        toast.error(tMsg("notConfigured"));
         return;
       }
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
-      toast.success("Cuenta creada. Revisa tu email para confirmar.");
+      toast.success(tMsg("registerSuccess"));
       router.push("/dashboard");
     } catch (err: any) {
-      toast.error(err.message || "Error al crear cuenta");
+      toast.error(err.message || tMsg("registerError"));
     } finally {
       setLoading(false);
     }
