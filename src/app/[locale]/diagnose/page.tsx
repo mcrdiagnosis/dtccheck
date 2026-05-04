@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -32,24 +31,23 @@ import {
   X,
   Cpu,
   Zap,
-  Trophy,
   ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Controller } from "react-hook-form";
 
 const MODULE_OPTIONS = [
-  { value: "engine", labelKey: "engine", icon: "🔧", color: "from-red-500 to-orange-500" },
-  { value: "transmission", labelKey: "transmission", icon: "⚙️", color: "from-blue-500 to-indigo-500" },
-  { value: "abs", labelKey: "abs", icon: "🛞", color: "from-yellow-500 to-amber-500" },
-  { value: "airbag", labelKey: "airbag", icon: "🛡️", color: "from-purple-500 to-pink-500" },
-  { value: "body", labelKey: "body", icon: "🚗", color: "from-green-500 to-teal-500" },
-  { value: "chassis", labelKey: "chassis", icon: "🔩", color: "from-slate-500 to-gray-600" },
-  { value: "network", labelKey: "communication", icon: "📡", color: "from-cyan-500 to-blue-500" },
-  { value: "emissions", labelKey: "emissions", icon: "💨", color: "from-emerald-500 to-green-500" },
-  { value: "fuel", labelKey: "fuel", icon: "⛽", color: "from-amber-500 to-yellow-500" },
-  { value: "ignition", labelKey: "ignition", icon: "⚡", color: "from-violet-500 to-purple-500" },
-  { value: "other", labelKey: "other", icon: "❓", color: "from-gray-400 to-gray-500" },
+  { value: "engine", labelKey: "engine", icon: "🔧", color: "from-red-500/20 to-orange-500/20" },
+  { value: "transmission", labelKey: "transmission", icon: "⚙️", color: "from-blue-500/20 to-indigo-500/20" },
+  { value: "abs", labelKey: "abs", icon: "🛞", color: "from-yellow-500/20 to-amber-500/20" },
+  { value: "airbag", labelKey: "airbag", icon: "🛡️", color: "from-purple-500/20 to-pink-500/20" },
+  { value: "body", labelKey: "body", icon: "🚗", color: "from-green-500/20 to-teal-500/20" },
+  { value: "chassis", labelKey: "chassis", icon: "🔩", color: "from-slate-500/20 to-gray-500/20" },
+  { value: "network", labelKey: "communication", icon: "📡", color: "from-cyan-500/20 to-blue-500/20" },
+  { value: "emissions", labelKey: "emissions", icon: "💨", color: "from-emerald-500/20 to-green-500/20" },
+  { value: "fuel", labelKey: "fuel", icon: "⛽", color: "from-amber-500/20 to-yellow-500/20" },
+  { value: "ignition", labelKey: "ignition", icon: "⚡", color: "from-violet-500/20 to-purple-500/20" },
+  { value: "other", labelKey: "other", icon: "❓", color: "from-gray-400/20 to-gray-500/20" },
 ];
 
 const diagnoseSchema = z.object({
@@ -62,8 +60,6 @@ const diagnoseSchema = z.object({
 });
 
 type DiagnoseForm = z.infer<typeof diagnoseSchema>;
-
-const STEPS = ["codes", "vehicle", "analyze"] as const;
 
 export default function DiagnosePage() {
   const t = useTranslations("diagnose");
@@ -218,38 +214,32 @@ export default function DiagnosePage() {
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
-      <div className="mb-8 text-center">
-        <div className="inline-flex items-center gap-2 mb-3">
-          <Trophy className="h-5 w-5 text-amber-500" />
-          <span className="xp-badge xp-badge-gold">+100 XP</span>
-        </div>
+      <div className="mb-8 text-center animate-slide-up">
         <h1 className="text-3xl font-bold">{t("title")}</h1>
         <p className="mt-2 text-muted-foreground">{t("subtitle")}</p>
       </div>
 
-      <div className="flex items-center justify-center gap-2 mb-8">
-        {STEPS.map((step, i) => {
-          const isDone = i === 0 ? hasCodes : i === 1 ? hasVehicle : false;
-          const isCurrent = i === 0 ? (hasCodes && !hasVehicle) : i === 1 ? (hasCodes && hasVehicle) : false;
-          return (
-            <div key={step} className="flex items-center gap-2">
-              <div className={`step-number ${isDone ? "step-done" : isCurrent ? "step-current" : "step-pending"}`}>
-                {isDone ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
-              </div>
-              <span className={`text-xs font-medium ${isDone ? "text-emerald-500" : isCurrent ? "text-primary" : "text-muted-foreground"}`}>
-                {step === "codes" ? t("dtcTitle") : step === "vehicle" ? t("vehicleInfo") : t("analyze")}
-              </span>
-              {i < STEPS.length - 1 && (
-                <div className={`w-8 h-0.5 ${isDone ? "bg-emerald-500" : "bg-muted-foreground/20"}`} />
-              )}
+      <div className="flex items-center justify-center gap-3 mb-8 animate-slide-up stagger-1">
+        {[
+          { label: t("dtcTitle"), done: hasCodes, active: hasCodes && !hasVehicle },
+          { label: t("vehicleInfo"), done: hasVehicle, active: hasCodes && hasVehicle },
+          { label: t("analyze"), done: false, active: false },
+        ].map((step, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <div className={`step-indicator ${step.done ? "step-done" : step.active ? "step-active" : "step-idle"}`}>
+              {step.done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
             </div>
-          );
-        })}
+            <span className={`text-xs font-medium hidden sm:inline ${step.done ? "text-emerald-500" : step.active ? "text-primary" : "text-muted-foreground"}`}>
+              {step.label}
+            </span>
+            {i < 2 && <div className={`w-8 h-0.5 rounded ${step.done ? "bg-emerald-500" : "bg-border"}`} />}
+          </div>
+        ))}
       </div>
 
       <form onSubmit={form.handleSubmit(onSubmit)}>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsList className="grid w-full grid-cols-2 mb-6 animate-scale-in">
             <TabsTrigger value="manual" className="gap-2">
               <Car className="h-4 w-4" />
               {t("tabManual")}
@@ -260,13 +250,12 @@ export default function DiagnosePage() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="manual">
-            <Card className="border-primary/20">
+          <TabsContent value="manual" className="animate-slide-up">
+            <Card className="game-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <AlertCircle className="h-5 w-5 text-primary" />
                   {t("dtcTitle")}
-                  {hasCodes && <span className="xp-badge xp-badge-emerald ml-auto">+30 XP</span>}
                 </CardTitle>
                 <CardDescription>{t("dtcHelp")}</CardDescription>
               </CardHeader>
@@ -282,12 +271,12 @@ export default function DiagnosePage() {
                   </p>
                 )}
 
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <Label className="flex items-center gap-2">
                     <Cpu className="h-4 w-4 text-primary" />
                     {t("moduleLabel")}
                   </Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                     {MODULE_OPTIONS.map((mod) => (
                       <button
                         key={mod.value}
@@ -296,10 +285,10 @@ export default function DiagnosePage() {
                           setSelectedModule(mod.value === selectedModule ? null : mod.value);
                           form.setValue("module", mod.value === selectedModule ? "" : mod.value);
                         }}
-                        className={`module-picker-item rounded-lg p-3 text-center ${selectedModule === mod.value ? "selected" : ""}`}
+                        className={`module-tile rounded-xl p-3 text-center bg-gradient-to-br ${mod.color}`}
                       >
                         <div className="text-2xl mb-1">{mod.icon}</div>
-                        <div className="text-xs font-medium">{t(`modules.${mod.labelKey}` as any)}</div>
+                        <div className="text-[10px] font-medium leading-tight">{t(`modules.${mod.labelKey}` as any)}</div>
                       </button>
                     ))}
                   </div>
@@ -309,13 +298,12 @@ export default function DiagnosePage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="pdf">
-            <Card className="border-primary/20">
+          <TabsContent value="pdf" className="animate-slide-up">
+            <Card className="game-card">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileUp className="h-5 w-5 text-primary" />
                   {t("tabPdf")}
-                  {pdfFile && <span className="xp-badge xp-badge-emerald ml-auto">+50 XP</span>}
                 </CardTitle>
                 <CardDescription>{t("pdfSupported")}</CardDescription>
               </CardHeader>
@@ -325,9 +313,9 @@ export default function DiagnosePage() {
                   onDragLeave={handleDrag}
                   onDragOver={handleDrag}
                   onDrop={handleDrop}
-                  className={`relative flex flex-col items-center justify-center rounded-lg border-2 border-dashed p-12 transition-colors ${
+                  className={`relative flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-12 transition-all duration-300 ${
                     dragActive
-                      ? "border-primary bg-primary/5"
+                      ? "border-primary bg-primary/5 scale-[1.02]"
                       : pdfFile
                       ? "border-emerald-500 bg-emerald-500/5"
                       : "border-muted-foreground/25 hover:border-primary/50"
@@ -342,12 +330,7 @@ export default function DiagnosePage() {
                           {(pdfFile.size / 1024).toFixed(1)} KB
                         </p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={removePdf}
-                      >
+                      <Button type="button" variant="ghost" size="icon" onClick={removePdf}>
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
@@ -371,12 +354,11 @@ export default function DiagnosePage() {
           </TabsContent>
         </Tabs>
 
-        <Card className="mt-6">
+        <Card className="mt-6 game-card animate-slide-up stagger-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5 text-primary" />
               {t("vehicleInfo")}
-              {hasVehicle && <span className="xp-badge xp-badge-blue ml-auto">+20 XP</span>}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -385,27 +367,21 @@ export default function DiagnosePage() {
                 <Label>{t("make")}</Label>
                 <Input placeholder="Toyota" {...form.register("make")} />
                 {form.formState.errors.make && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.make.message}
-                  </p>
+                  <p className="text-sm text-destructive">{form.formState.errors.make.message}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>{t("model")}</Label>
                 <Input placeholder="Corolla" {...form.register("model")} />
                 {form.formState.errors.model && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.model.message}
-                  </p>
+                  <p className="text-sm text-destructive">{form.formState.errors.model.message}</p>
                 )}
               </div>
               <div className="space-y-2">
                 <Label>{t("year")}</Label>
                 <Input placeholder="2020" {...form.register("year")} />
                 {form.formState.errors.year && (
-                  <p className="text-sm text-destructive">
-                    {form.formState.errors.year.message}
-                  </p>
+                  <p className="text-sm text-destructive">{form.formState.errors.year.message}</p>
                 )}
               </div>
               <div className="space-y-2">
@@ -414,50 +390,42 @@ export default function DiagnosePage() {
               </div>
             </div>
             {pdfUrl && (
-              <div className="mt-4 rounded-lg border overflow-hidden">
+              <div className="mt-4 rounded-xl border overflow-hidden glass">
                 <div className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b">
                   <FileText className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium truncate flex-1">{pdfFile?.name}</span>
                   <span className="text-xs text-muted-foreground">{pdfFile ? `${(pdfFile.size / 1024).toFixed(1)} KB` : ""}</span>
                 </div>
-                <iframe
-                  src={pdfUrl}
-                  className="w-full h-64 md:h-96"
-                  title={t("pdfPreview")}
-                />
+                <iframe src={pdfUrl} className="w-full h-64 md:h-96" title={t("pdfPreview")} />
               </div>
             )}
           </CardContent>
         </Card>
 
         {isAnalyzing && (
-          <Card className="mt-6 border-primary/20">
+          <Card className="mt-6 game-card animate-scale-in">
             <CardContent className="pt-6">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="flex items-center gap-3 mb-4">
                 <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 <span className="font-medium">{t("analyzing")}</span>
                 <span className="text-muted-foreground font-mono">{elapsed}s</span>
-                <span className="xp-badge xp-badge-gold ml-auto">+100 XP</span>
               </div>
-              <div className="xp-bar-track mb-2">
-                <div
-                  className="xp-bar-fill bg-gradient-to-r from-primary to-primary/60 animate-progress-fill"
-                  style={{ width: `${progress}%` }}
-                />
+              <div className="progress-bar-game">
+                <div className="bar" style={{ width: `${progress}%` }} />
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-sm text-muted-foreground mt-3">
                 {t("analyzingProgress")}
               </p>
             </CardContent>
           </Card>
         )}
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-6 flex justify-end animate-slide-up stagger-3">
           <Button
             type="submit"
             size="lg"
             disabled={isAnalyzing}
-            className="gap-2 px-8"
+            className="game-btn gap-2 px-8"
           >
             {isAnalyzing ? (
               <>

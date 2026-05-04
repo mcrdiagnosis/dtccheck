@@ -26,9 +26,8 @@ import {
   Eye,
   Loader2,
   Plus,
-  Trophy,
-  Zap,
-  Flame,
+  CheckCircle2,
+  AlertTriangle,
 } from "lucide-react";
 import type { Diagnostic } from "@/types/diagnostic";
 import { getAllLocal, deleteDiagnosticLocal } from "@/lib/local-storage";
@@ -94,16 +93,15 @@ export default function DashboardPage() {
           <Button className="gap-2">
             <Plus className="h-4 w-4" />
             {t("new")}
-            <Zap className="h-3 w-3" />
           </Button>
         </Link>
       </div>
 
       <div className="grid grid-cols-3 gap-4 mb-8">
-        <Card className="game-card">
+        <Card className="game-card stat-card animate-slide-up stagger-1">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-              <Trophy className="h-5 w-5 text-primary" />
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Car className="h-5 w-5 text-primary" />
             </div>
             <div>
               <p className="text-2xl font-bold">{diagnostics.length}</p>
@@ -111,25 +109,25 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="game-card">
+        <Card className="game-card stat-card animate-slide-up stagger-2">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-amber-500/10 flex items-center justify-center">
-              <Flame className="h-5 w-5 text-amber-500" />
+            <div className="h-10 w-10 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
               <p className="text-2xl font-bold">{diagnostics.filter(d => d.status === "completed").length}</p>
-              <p className="text-xs text-muted-foreground">Completed</p>
+              <p className="text-xs text-muted-foreground">{t("status.completed")}</p>
             </div>
           </CardContent>
         </Card>
-        <Card className="game-card">
+        <Card className="game-card stat-card animate-slide-up stagger-3">
           <CardContent className="p-4 flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-              <Zap className="h-5 w-5 text-emerald-500" />
+            <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{diagnostics.filter(d => d.status === "completed").length * 100}</p>
-              <p className="text-xs text-muted-foreground">XP</p>
+              <p className="text-2xl font-bold">{diagnostics.filter(d => d.status === "analyzing" || d.status === "tests_in_progress").length}</p>
+              <p className="text-xs text-muted-foreground">{t("status.analyzing")}</p>
             </div>
           </CardContent>
         </Card>

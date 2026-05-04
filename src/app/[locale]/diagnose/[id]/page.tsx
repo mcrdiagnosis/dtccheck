@@ -34,10 +34,7 @@ import {
   Download,
   Share2,
   Printer,
-  Zap,
-  Trophy,
   Target,
-  Flame,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
@@ -65,13 +62,6 @@ const severityColors: Record<string, string> = {
   critical: "bg-red-500/10 text-red-500 border-red-500/20",
 };
 
-const severityXp: Record<string, { badge: string; xp: string }> = {
-  low: { badge: "xp-badge-blue", xp: "+10 XP" },
-  medium: { badge: "xp-badge-gold", xp: "+25 XP" },
-  high: { badge: "xp-badge-red", xp: "+50 XP" },
-  critical: { badge: "xp-badge-red", xp: "+100 XP" },
-};
-
 const statusIcons = {
   pending: <AlertTriangle className="h-4 w-4 text-muted-foreground" />,
   passed: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
@@ -91,8 +81,6 @@ export default function DiagnosticResultPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDtcCode, setChatDtcCode] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
-  const [xpGained, setXpGained] = useState(0);
-  const [xpFlash, setXpFlash] = useState<string | null>(null);
 
   const openChat = (dtcCode?: string) => {
     if (dtcCode) setChatDtcCode(dtcCode);
@@ -135,11 +123,6 @@ export default function DiagnosticResultPage() {
         ai_recommendation: "",
       },
     }));
-    const xpMap: Record<string, number> = { passed: 50, failed: 30, skipped: 10, pending: 0 };
-    const gained = xpMap[status];
-    setXpGained((prev) => prev + gained);
-    setXpFlash(`+${gained} XP`);
-    setTimeout(() => setXpFlash(null), 1500);
   };
 
   const handleReanalyze = async () => {
@@ -336,41 +319,27 @@ export default function DiagnosticResultPage() {
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
       <AuthGate>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 animate-slide-up">
         <div>
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-3xl font-bold">{tr("title")}</h1>
-            {xpFlash && (
-              <span key={xpFlash} className="xp-badge xp-badge-gold animate-float-up">
-                <Zap className="h-3 w-3" />
-                {xpFlash}
-              </span>
-            )}
-          </div>
-          <p className="text-muted-foreground">
+          <h1 className="text-3xl font-bold">{tr("title")}</h1>
+          <p className="text-muted-foreground mt-1">
             <Car className="inline h-4 w-4 mr-1" />
             {diagnostic.vehicle_info.year} {diagnostic.vehicle_info.make}{" "}
             {diagnostic.vehicle_info.model}
             {diagnostic.vehicle_info.engine && ` ${diagnostic.vehicle_info.engine}`}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-sm">
-            {diagnostic.source === "pdf" ? (
-              <><FileText className="h-3 w-3 mr-1" /> PDF</>
-            ) : (
-              <><Wrench className="h-3 w-3 mr-1" /> Manual</>
-            )}
-          </Badge>
-          <span className="xp-badge xp-badge-gold">
-            <Trophy className="h-3 w-3" />
-            {xpGained} XP
-          </span>
-        </div>
+        <Badge variant="outline" className="text-sm">
+          {diagnostic.source === "pdf" ? (
+            <><FileText className="h-3 w-3 mr-1" /> PDF</>
+          ) : (
+            <><Wrench className="h-3 w-3 mr-1" /> Manual</>
+          )}
+        </Badge>
       </div>
 
       {analysis.interactive_tests?.length > 0 && (
-        <div className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20">
+        <div className="mb-6 p-4 rounded-xl glass animate-slide-up stagger-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
@@ -380,9 +349,9 @@ export default function DiagnosticResultPage() {
               {Object.keys(testResults).length} / {analysis.interactive_tests.length}
             </span>
           </div>
-          <div className="xp-bar-track">
+          <div className="progress-bar-game">
             <div
-              className="xp-bar-fill bg-gradient-to-r from-primary to-primary/70"
+              className="bar"
               style={{ width: `${(Object.keys(testResults).length / analysis.interactive_tests.length) * 100}%` }}
             />
           </div>
@@ -405,7 +374,7 @@ export default function DiagnosticResultPage() {
       </div>
 
       <div className="grid gap-6">
-        <Card className="border-primary/20">
+        <Card className="game-card border-primary/20 animate-slide-up stagger-1">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-primary" />
@@ -426,7 +395,7 @@ export default function DiagnosticResultPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="game-card animate-slide-up stagger-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
@@ -576,7 +545,7 @@ export default function DiagnosticResultPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="game-card animate-slide-up stagger-3">
           <CardHeader>
             <CardTitle>{tr("probableCauses")}</CardTitle>
           </CardHeader>
@@ -636,7 +605,7 @@ export default function DiagnosticResultPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="game-card animate-slide-up stagger-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-emerald-500" />
@@ -708,17 +677,13 @@ export default function DiagnosticResultPage() {
         </Card>
 
         {analysis.interactive_tests?.length > 0 && (
-          <Card className="border-primary/20">
+          <Card className="game-card border-primary/20 animate-slide-up stagger-5">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
                     {tr("tests")}
-                    <span className="xp-badge xp-badge-emerald">
-                      <Flame className="h-3 w-3" />
-                      {Object.keys(testResults).length * 50} XP
-                    </span>
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {tr("completeTests")}
@@ -815,21 +780,13 @@ export default function DiagnosticResultPage() {
                               key={status}
                               type="button"
                               size="sm"
-                              variant={
-                                testResults[test.id]?.status === status
-                                  ? "default"
-                                  : "outline"
-                              }
+                              variant={testResults[test.id]?.status === status ? "default" : "outline"}
                               onClick={() => handleTestStatus(test.id, status)}
-                              className={`gap-1 ${
+                              className={`gap-1 test-result-btn ${
                                 testResults[test.id]?.status === status
-                                  ? status === "passed"
-                                    ? "bg-emerald-500 hover:bg-emerald-600"
-                                    : status === "failed"
-                                    ? "bg-red-500 hover:bg-red-600"
-                                    : ""
+                                  ? status === "passed" ? "active-passed" : status === "failed" ? "active-failed" : ""
                                   : ""
-                              } ${testResults[test.id]?.status === status ? "test-complete-flash" : ""}`}
+                              }`}
                             >
                               {statusIcons[status]}
                               {tr(`testStatus.${status}`)}
@@ -846,7 +803,7 @@ export default function DiagnosticResultPage() {
         )}
 
         {analysis.forum_insights?.length > 0 && (
-          <Card>
+          <Card className="game-card animate-slide-up stagger-5">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-500" />
@@ -887,7 +844,7 @@ export default function DiagnosticResultPage() {
         )}
 
         {analysis.video_resources && analysis.video_resources.length > 0 && (
-          <Card>
+          <Card className="game-card animate-slide-up stagger-6">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <svg className="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
