@@ -9,16 +9,18 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const supabase = await createClient();
-    if (supabase) {
-      const { data, error } = await supabase
-        .from("diagnostics")
-        .select("*")
-        .eq("id", id)
-        .single();
+    try {
+      const supabase = await createClient();
+      if (supabase) {
+        const { data, error } = await supabase
+          .from("diagnostics")
+          .select("*")
+          .eq("id", id)
+          .single();
 
-      if (data) return NextResponse.json(data);
-    }
+        if (data) return NextResponse.json(data);
+      }
+    } catch {}
 
     const local = getDiagnosticLocal(id);
     if (local) return NextResponse.json(local);
@@ -35,20 +37,21 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await createClient();
 
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    try {
+      const supabase = await createClient();
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        await supabase
+          .from("diagnostics")
+          .delete()
+          .eq("id", id)
+          .eq("user_id", user.id);
       }
-      const { error } = await supabase
-        .from("diagnostics")
-        .delete()
-        .eq("id", id)
-        .eq("user_id", user.id);
-      if (error) throw error;
-    }
+    } catch {}
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
