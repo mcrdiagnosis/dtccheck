@@ -1,17 +1,14 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
+import type { AIAnalysis, VehicleInfo, VideoResource } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
 
-Busca en foros y YouTube usando la herramienta de búsqueda de Google.
+Busca en foros usando la herramienta de búsqueda de Google.
 
 Responde SOLO JSON válido (sin markdown, sin texto extra):
 {
   "summary": "Resumen ejecutivo en 2-3 oraciones.",
-  "video_resources": [
-    {"title": "Titulo", "url": "https://www.youtube.com/watch?v=ID_REAL", "channel": "Canal", "description": "Desc"}
-  ],
   "dtc_codes": [{"code": "P0301", "description": "Desc", "severity": "high"}],
   "vehicle_context": {"affected_systems": ["sistema"]},
   "probable_causes": [
@@ -29,11 +26,9 @@ Responde SOLO JSON válido (sin markdown, sin texto extra):
 }
 
 Reglas:
-- summary y video_resources van PRIMERO (importante)
 - severity: "low", "medium", "high", "critical"
 - difficulty: "easy", "medium", "hard"
 - Max 3 causas, 2 soluciones con max 4 pasos, 2 pruebas con max 4 pasos
-- videos: SOLO IDs reales de YouTube. Si no hay, array vacio []
 - URLs completas con https://
 - Sé CONCISO en descripciones y pasos`;
 
@@ -388,4 +383,50 @@ Basándote en estos resultados, actualiza las causas probables y soluciones. Res
   }
 
   return parsed;
+}
+
+export async function searchYouTubeVideos(
+  dtcCodes: string[],
+  vehicleInfo: VehicleInfo,
+  locale?: string
+): Promise<VideoResource[]> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-3.1-pro-preview",
+    tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 4096 },
+  });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
+  const codesStr = dtcCodes.join(", ");
+
+  const localeLangMap: Record<string, string> = {
+    es: "español", en: "English", pt: "português",
+  };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const prompt = `Busca videos de YouTube reales sobre el diagnostico y reparacion de los codigos DTC ${codesStr} para un ${vehicleStr}.
+
+Busca en YouTube usando la herramienta de busqueda de Google.
+
+Responde SOLO JSON (sin markdown):
+[
+  {"title": "Titulo del video", "url": "https://www.youtube.com/watch?v=ID_REAL_11chars", "channel": "Nombre del canal", "description": "Breve descripcion"}
+]
+
+REGLAS:
+- Busca de 2 a 5 videos REALES de YouTube
+- Los IDs de video deben ser reales (11 caracteres). Si no encontraste videos reales, devuelve array vacio []
+- NUNCA inventes IDs de video
+- Responde en ${lang}
+- SOLO JSON, sin texto extra`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+  console.log("YouTube search response:", text.substring(0, 300));
+
+  const parsed = safeJsonParse(text);
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed?.video_resources && Array.isArray(parsed.video_resources)) return parsed.video_resources;
+  return [];
 }

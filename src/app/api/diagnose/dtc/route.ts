@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeDTCs } from "@/lib/gemini";
+import { analyzeDTCs, searchYouTubeVideos } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -19,6 +19,10 @@ export async function POST(request: NextRequest) {
       : dtc_codes.split(",").map((c: string) => c.trim().toUpperCase());
 
     const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale);
+
+    console.log("Searching YouTube videos...");
+    const videos = await searchYouTubeVideos(dtcArray, vehicle_info, locale);
+    aiAnalysis.video_resources = videos.length > 0 ? videos : (aiAnalysis.video_resources || []);
 
     const id = crypto.randomUUID();
     const diagnostic = {
