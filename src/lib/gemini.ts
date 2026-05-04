@@ -391,12 +391,6 @@ export async function searchYouTubeVideos(
   locale?: string
 ): Promise<VideoResource[]> {
   const ai = getGenAI();
-  const model = ai.getGenerativeModel({
-    model: "gemini-3.1-pro-preview",
-    tools: [{ googleSearch: {} } as any],
-    generationConfig: { maxOutputTokens: 4096 },
-  });
-
   const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
   const codesStr = dtcCodes.join(", ");
 
@@ -405,28 +399,62 @@ export async function searchYouTubeVideos(
   };
   const lang = localeLangMap[locale || "es"] || "español";
 
-  const prompt = `Busca videos de YouTube reales sobre el diagnostico y reparacion de los codigos DTC ${codesStr} para un ${vehicleStr}.
+  const prompt = `Busca en YouTube videos reales sobre como diagnosticar y reparar los codigos DTC ${codesStr} para un vehiculo ${vehicleStr}.
 
-Busca en YouTube usando la herramienta de busqueda de Google.
+Busca especificamente en YouTube usando Google Search.
 
-Responde SOLO JSON (sin markdown):
+Responde SOLO un array JSON (sin markdown, sin texto antes ni despues):
 [
-  {"title": "Titulo del video", "url": "https://www.youtube.com/watch?v=ID_REAL_11chars", "channel": "Nombre del canal", "description": "Breve descripcion"}
+  {"title": "Titulo del video", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "channel": "Nombre del canal", "description": "Breve descripcion del video"}
 ]
 
-REGLAS:
-- Busca de 2 a 5 videos REALES de YouTube
-- Los IDs de video deben ser reales (11 caracteres). Si no encontraste videos reales, devuelve array vacio []
-- NUNCA inventes IDs de video
-- Responde en ${lang}
-- SOLO JSON, sin texto extra`;
+REGLAS CRITICAS:
+- Busca de 2 a 5 videos REALES de YouTube que existan
+- Cada ID de video debe tener exactamente 11 caracteres alfanumericos
+- Si NO encontraste videos reales de YouTube, devuelve: []
+- NUNCA inventes o guesses video IDs
+- Responde en ${lang}`;
 
-  const result = await model.generateContent(prompt);
-  const text = result.response.text();
-  console.log("YouTube search response:", text.substring(0, 300));
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const model = ai.getGenerativeModel({
+        model: "gemini-3.1-pro-preview",
+        tools: attempt === 0 ? [{ googleSearch: {} } as any] : undefined,
+        generationConfig: { maxOutputTokens: 8192 },
+      });
 
-  const parsed = safeJsonParse(text);
-  if (Array.isArray(parsed)) return parsed;
-  if (parsed?.video_resources && Array.isArray(parsed.video_resources)) return parsed.video_resources;
+      const result = await model.generateContent(prompt);
+      const candidate = result.response.candidates?.[0];
+      const finishReason = candidate?.finishReason;
+      const text = result.response.text();
+
+      console.log("YouTube search attempt", attempt + 1, "finishReason:", finishReason, "length:", text.length);
+
+      if (!text || text.length === 0) {
+        console.log("YouTube search empty response, finishReason:", finishReason);
+        continue;
+      }
+
+      console.log("YouTube search response:", text.substring(0, 300));
+
+      const parsed = safeJsonParse(text);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const valid = parsed.filter((v: any) =>
+          v.url && v.url.includes("youtube.com/watch") && v.title
+        );
+        if (valid.length > 0) return valid;
+      }
+      if (parsed?.video_resources && Array.isArray(parsed.video_resources)) {
+        const valid = parsed.video_resources.filter((v: any) =>
+          v.url && v.url.includes("youtube.com/watch") && v.title
+        );
+        if (valid.length > 0) return valid;
+      }
+    } catch (e) {
+      console.error("YouTube search error attempt", attempt + 1, e);
+    }
+  }
+
+  console.log("YouTube search: no videos found after 2 attempts");
   return [];
 }
