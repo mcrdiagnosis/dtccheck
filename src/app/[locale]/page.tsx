@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/routing";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 import {
   Brain,
   FileUp,
@@ -13,6 +14,10 @@ import {
   Zap,
   Shield,
   Search,
+  Trophy,
+  Cpu,
+  Wrench,
+  Star,
 } from "lucide-react";
 
 export default function HomePage() {
@@ -24,26 +29,40 @@ export default function HomePage() {
       icon: Brain,
       title: t("feature1Title"),
       desc: t("feature1Desc"),
-      gradient: "from-violet-500 to-purple-500",
+      gradient: "from-violet-500 to-purple-600",
+      xp: "+50 XP",
+      xpClass: "xp-badge-gold",
     },
     {
       icon: FileUp,
       title: t("feature2Title"),
       desc: t("feature2Desc"),
-      gradient: "from-blue-500 to-cyan-500",
+      gradient: "from-blue-500 to-cyan-600",
+      xp: "+30 XP",
+      xpClass: "xp-badge-blue",
     },
     {
       icon: ClipboardCheck,
       title: t("feature3Title"),
       desc: t("feature3Desc"),
-      gradient: "from-emerald-500 to-green-500",
+      gradient: "from-emerald-500 to-green-600",
+      xp: "+100 XP",
+      xpClass: "xp-badge-emerald",
     },
     {
       icon: History,
       title: t("feature4Title"),
       desc: t("feature4Desc"),
-      gradient: "from-orange-500 to-amber-500",
+      gradient: "from-orange-500 to-amber-600",
+      xp: "+20 XP",
+      xpClass: "xp-badge-gold",
     },
+  ];
+
+  const stats = [
+    { icon: Cpu, value: "AI", label: "Gemini", color: "text-violet-500" },
+    { icon: Wrench, value: "OBD2", label: "DTC", color: "text-blue-500" },
+    { icon: Star, value: "3", label: "Free/mes", color: "text-amber-500" },
   ];
 
   return (
@@ -76,15 +95,27 @@ export default function HomePage() {
               {t("heroDescription")}
             </p>
 
+            <div className="mt-6 flex items-center justify-center gap-4">
+              {stats.map((stat, i) => (
+                <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 animate-slide-up" style={{ animationDelay: `${i * 100}ms` }}>
+                  <stat.icon className={`h-4 w-4 ${stat.color}`} />
+                  <span className="text-sm font-bold">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground">{stat.label}</span>
+                </div>
+              ))}
+            </div>
+
             <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/diagnose">
-                <Button size="lg" className="gap-2 text-base px-8">
+                <Button size="lg" className="gap-2 text-base px-8 animate-pulse-glow">
+                  <Zap className="h-4 w-4" />
                   {t("cta")}
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </Link>
               <Link href="/pricing">
                 <Button variant="outline" size="lg" className="gap-2 text-base">
+                  <Trophy className="h-4 w-4" />
                   {tNav("pricing")}
                 </Button>
               </Link>
@@ -98,13 +129,18 @@ export default function HomePage() {
           {features.map((feature, i) => (
             <Card
               key={i}
-              className="group relative overflow-hidden border-border/50 hover:border-primary/30 transition-all duration-300"
+              className="game-card group relative overflow-hidden border-border/50 hover:border-primary/30"
             >
               <CardContent className="p-6">
-                <div
-                  className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${feature.gradient} text-white shadow-lg`}
-                >
-                  <feature.icon className="h-6 w-6" />
+                <div className="flex items-start justify-between mb-4">
+                  <div
+                    className={`inline-flex h-12 w-12 items-center justify-center rounded-lg bg-gradient-to-br ${feature.gradient} text-white shadow-lg`}
+                  >
+                    <feature.icon className="h-6 w-6" />
+                  </div>
+                  <span className={`xp-badge ${feature.xpClass}`}>
+                    {feature.xp}
+                  </span>
                 </div>
                 <h3 className="mb-2 font-semibold text-lg">{feature.title}</h3>
                 <p className="text-sm text-muted-foreground">{feature.desc}</p>
@@ -131,12 +167,24 @@ export default function HomePage() {
                 {t("fastResults")}
               </div>
             </div>
-            <Link href="/diagnose">
-              <Button size="lg" variant="outline" className="gap-2">
-                {t("startNow")}
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            <div className="mx-auto max-w-sm">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Diagnostic Progress</span>
+                <span className="xp-badge xp-badge-emerald">Level 1</span>
+              </div>
+              <div className="xp-bar-track">
+                <div className="xp-bar-fill bg-gradient-to-r from-emerald-500 to-emerald-400" style={{ width: "0%" }} />
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">0 / 3 free diagnostics used</p>
+            </div>
+            <div className="mt-8">
+              <Link href="/diagnose">
+                <Button size="lg" variant="outline" className="gap-2">
+                  {t("startNow")}
+                  <ArrowRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
