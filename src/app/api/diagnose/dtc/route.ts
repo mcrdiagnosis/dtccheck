@@ -32,15 +32,17 @@ export async function POST(request: NextRequest) {
       status: "completed" as const,
     };
 
-    const supabase = await createClient();
-    if (supabase) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        diagnostic.user_id = user.id;
-        const { error } = await supabase.from("diagnostics").insert(diagnostic);
-        if (error) console.error("DB error:", error);
+    try {
+      const supabase = await createClient();
+      if (supabase) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          diagnostic.user_id = user.id;
+          const { error } = await supabase.from("diagnostics").insert(diagnostic);
+          if (error && error.code !== "PGRST205") console.error("DB error:", error);
+        }
       }
-    }
+    } catch {}
 
     return NextResponse.json(diagnostic);
   } catch (error: any) {

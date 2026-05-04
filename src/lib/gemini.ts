@@ -2,43 +2,40 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = `Eres un técnico automotriz experto con más de 20 años de experiencia. Analiza los códigos DTC proporcionados para el vehículo especificado.
+const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
 
-DEBES buscar información usando la herramienta de búsqueda de Google en:
-1. Foros especializados: automotive-forums.com, mechanicadvice reddit, bimmerfest, toyota-nation, honda-tech, etc.
-2. Videos de YouTube: busca videos que expliquen y muestren cómo diagnosticar y reparar el problema específico para este vehículo.
+Busca en foros y YouTube usando la herramienta de búsqueda de Google.
 
-Responde SIEMPRE en JSON válido con esta estructura exacta:
+Responde SOLO JSON válido (sin markdown, sin texto extra):
 {
-  "dtc_codes": [{"code": "P0301", "description": "Descripcion", "severity": "high"}],
-  "vehicle_context": {"affected_systems": ["sistema1"]},
+  "summary": "Resumen ejecutivo en 2-3 oraciones.",
+  "video_resources": [
+    {"title": "Titulo", "url": "https://www.youtube.com/watch?v=ID_REAL", "channel": "Canal", "description": "Desc"}
+  ],
+  "dtc_codes": [{"code": "P0301", "description": "Desc", "severity": "high"}],
+  "vehicle_context": {"affected_systems": ["sistema"]},
   "probable_causes": [
     {"cause": "Causa", "probability": 85, "sources": ["url"]}
   ],
   "solutions": [
-    {"description": "Solucion", "difficulty": "easy", "estimated_cost": "$30-80 USD", "steps": ["Paso 1", "Paso 2"], "sources": ["url"]}
+    {"description": "Solucion", "difficulty": "easy", "estimated_cost": "$30", "steps": ["Paso1", "Paso2"], "sources": ["url"]}
   ],
   "interactive_tests": [
-    {"id": "t1", "name": "Prueba", "description": "Desc", "tools_needed": ["Herramienta"], "steps": ["Paso 1", "Paso 2"], "expected_result": "Resultado", "pass_implication": "Si pasa", "fail_implication": "Si falla"}
+    {"id": "t1", "name": "Prueba", "description": "Desc", "tools_needed": ["Tool"], "steps": ["P1", "P2"], "expected_result": "Esperado", "pass_implication": "Si pasa", "fail_implication": "Si falla"}
   ],
   "forum_insights": [
-    {"forum": "Nombre foro", "summary": "Resumen", "url": "url"}
-  ],
-  "video_resources": [
-    {"title": "Titulo", "url": "https://www.youtube.com/watch?v=xxx", "channel": "Canal", "description": "Desc"}
-  ],
-  "summary": "Resumen ejecutivo del diagnostico en 2-3 oraciones."
+    {"forum": "Foro", "summary": "Resumen", "url": "url"}
+  ]
 }
 
-Asegúrate de que:
-- Las causas estén ordenadas por probabilidad (mayor a menor)
-- Incluyas fuentes reales de foros cuando sea posible
-- Los costs sean estimaciones realistas
-- Las URLs deben ser completas (con https://)
-- video_resources: SOLO videos reales de YouTube encontrados. Si no hay, array vacío []
-- NUNCA inventes video IDs de YouTube
-- IMPORTANTE para no truncar: máximo 3 soluciones con máximo 4 pasos cada una, máximo 2 pruebas interactivas con máximo 4 pasos cada una, descripciones breves
-- CRÍTICO: Responde SOLO JSON válido, sin texto adicional, sin markdown.`;
+Reglas:
+- summary y video_resources van PRIMERO (importante)
+- severity: "low", "medium", "high", "critical"
+- difficulty: "easy", "medium", "hard"
+- Max 3 causas, 2 soluciones con max 4 pasos, 2 pruebas con max 4 pasos
+- videos: SOLO IDs reales de YouTube. Si no hay, array vacio []
+- URLs completas con https://
+- Sé CONCISO en descripciones y pasos`;
 
 let genAI: GoogleGenerativeAI | null = null;
 
