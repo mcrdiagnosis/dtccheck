@@ -72,12 +72,19 @@ ${chatSummary}
     const response = result.response;
     const text = response.text();
 
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
+    let analysis = null;
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        let jsonStr = jsonMatch[0];
+        jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
+        jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+        analysis = JSON.parse(jsonStr);
+      }
+    } catch {}
+    if (!analysis) {
       return NextResponse.json({ error: "AI response is not valid JSON" }, { status: 500 });
     }
-
-    const analysis = JSON.parse(jsonMatch[0]);
 
     try {
       const candidate = response.candidates?.[0];

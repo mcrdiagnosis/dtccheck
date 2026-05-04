@@ -65,6 +65,48 @@ CRÍTICO SOBRE VIDEO_RESOURCES:
 
 let genAI: GoogleGenerativeAI | null = null;
 
+function safeJsonParse(text: string): any {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  let jsonStr = jsonMatch[0];
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch {}
+
+  const fixes = [
+    (s: string) => s.replace(/,\s*([}\]])/g, "$1"),
+    (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""),
+    (s: string) => s.replace(/(\w+)\s*:\s*'([^']*)'/g, '"$1": "$2"'),
+    (s: string) => s.replace(/[\x00-\x1f]/g, (c) => c === "\n" || c === "\r" || c === "\t" ? "" : ""),
+  ];
+
+  for (const fix of fixes) {
+    try {
+      return JSON.parse(fix(jsonStr));
+    } catch {}
+  }
+
+  let start = jsonStr.indexOf("{");
+  let depth = 0;
+  let lastValidEnd = -1;
+  for (let i = start; i < jsonStr.length; i++) {
+    if (jsonStr[i] === "{") depth++;
+    else if (jsonStr[i] === "}") depth--;
+    if (depth === 0) { lastValidEnd = i; break; }
+  }
+  if (lastValidEnd > 0) {
+    try {
+      const cleaned = jsonStr.substring(start, lastValidEnd + 1).replace(/,\s*([}\]])/g, "$1");
+      return JSON.parse(cleaned);
+    } catch {}
+  }
+
+  console.error("Failed to parse JSON. First 2000 chars:", jsonStr.substring(0, 2000));
+  return null;
+}
+
 function getGenAI() {
   if (!genAI) {
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -155,26 +197,21 @@ Es CRUCIAL:
   const text = result.response.text();
   console.log("Gemini vision raw response:", text.substring(0, 500));
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  const parsed = safeJsonParse(text);
+  if (!parsed) {
     return { codes: [], modules: [], rawText: text };
   }
 
-  try {
-    const parsed = JSON.parse(jsonMatch[0]);
-    const isValidCode = (c: string) => /^[PCBU][0-9A-F]{2,4}$/i.test(c) || /^[PCBU]\d{2,4}[A-F]$/i.test(c);
-    const allCodes = (parsed.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase());
-    return {
-      codes: allCodes,
-      modules: (parsed.modules || []).map((m: any) => ({
-        module: m.module,
-        codes: (m.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase()),
-      })),
-      rawText: parsed.rawText || "",
-    };
-  } catch {
-    return { codes: [], modules: [], rawText: text };
-  }
+  const isValidCode = (c: string) => /^[PCBU][0-9A-F]{2,4}$/i.test(c) || /^[PCBU]\d{2,4}[A-F]$/i.test(c);
+  const allCodes = (parsed.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase());
+  return {
+    codes: allCodes,
+    modules: (parsed.modules || []).map((m: any) => ({
+      module: m.module,
+      codes: (m.codes || []).filter(isValidCode).map((c: string) => c.toUpperCase()),
+    })),
+    rawText: parsed.rawText || "",
+  };
 }
 
 export async function analyzeDTCs(
@@ -238,12 +275,10 @@ Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO e
   const response = result.response;
   const text = response.text();
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  const analysis: AIAnalysis = safeJsonParse(text);
+  if (!analysis) {
     throw new Error("AI response is not valid JSON");
   }
-
-  const analysis: AIAnalysis = JSON.parse(jsonMatch[0]);
 
   try {
     const candidate = response.candidates?.[0];
@@ -338,10 +373,10 @@ Basándote en estos resultados, actualiza las causas probables y soluciones. Res
   const response = result.response;
   const text = response.text();
 
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
+  const parsed = safeJsonParse(text);
+  if (!parsed) {
     throw new Error("AI response is not valid JSON");
   }
 
-  return JSON.parse(jsonMatch[0]);
+  return parsed;
 }
