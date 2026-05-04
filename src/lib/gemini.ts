@@ -413,7 +413,7 @@ Si no encuentras videos reales, responde: []`;
     try {
       const useSearch = attempt < 2;
       const model = ai.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-pro-preview",
         tools: useSearch ? [{ googleSearch: {} } as any] : undefined,
         generationConfig: { maxOutputTokens: 4096 },
       });
