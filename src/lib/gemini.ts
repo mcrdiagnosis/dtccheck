@@ -111,6 +111,35 @@ function safeJsonParse(raw: string): any {
     try { return JSON.parse(c); } catch {}
   }
 
+  let recovered = jsonStr.trimEnd();
+  if (!recovered.endsWith("}")) {
+    try {
+      const openBrackets: string[] = [];
+      let inStr = false;
+      let esc = false;
+      for (let i = 0; i < recovered.length; i++) {
+        const ch = recovered[i];
+        if (esc) { esc = false; continue; }
+        if (ch === "\\") { esc = true; continue; }
+        if (ch === '"') { inStr = !inStr; continue; }
+        if (inStr) continue;
+        if (ch === "{" || ch === "[") openBrackets.push(ch);
+        else if (ch === "}") { if (openBrackets[openBrackets.length - 1] === "{") openBrackets.pop(); }
+        else if (ch === "]") { if (openBrackets[openBrackets.length - 1] === "[") openBrackets.pop(); }
+      }
+      if (inStr) recovered += '"';
+      if (recovered.endsWith(",")) recovered = recovered.slice(0, -1);
+      for (let i = openBrackets.length - 1; i >= 0; i--) {
+        recovered += openBrackets[i] === "{" ? "}" : "]";
+      }
+      recovered = recovered.replace(/,\s*([}\]])/g, "$1");
+      console.log("Truncation recovery: added", openBrackets.length, "closing brackets");
+      return JSON.parse(recovered);
+    } catch (e) {
+      console.error("Truncation recovery failed:", e);
+    }
+  }
+
   console.error("safeJsonParse FAILED. Raw length:", raw.length);
   console.error("Raw first 3000:", raw.substring(0, 3000));
   return null;
@@ -131,11 +160,16 @@ function getModel() {
     model: "gemini-3.1-pro-preview",
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 65536 },
   });
 }
 
 function getVisionModel() {
   const ai = getGenAI();
+  return ai.getGenerativeModel({
+    model: "gemini-3.1-pro-preview",
+    generationConfig: { maxOutputTokens: 65536 },
+  });
   return ai.getGenerativeModel({
     model: "gemini-3.1-pro-preview",
   });
