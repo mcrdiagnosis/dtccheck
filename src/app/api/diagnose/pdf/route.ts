@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (aiAnalysis.video_resources && aiAnalysis.video_resources.length > 0) {
-      aiAnalysis.video_resources = await validateVideoResources(aiAnalysis.video_resources);
+      aiAnalysis.video_resources = await validateVideoResources(
+        aiAnalysis.video_resources, dtcCodes, mergedVehicle, locale
+      );
     }
 
     const id = crypto.randomUUID();

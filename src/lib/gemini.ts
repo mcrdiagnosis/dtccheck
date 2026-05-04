@@ -398,31 +398,41 @@ export async function searchYouTubeVideos(
   const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
   const codesStr = dtcCodes.join(", ");
 
-  const prompt = `Dime URLs de videos reales de YouTube sobre como diagnosticar o reparar los codigos ${codesStr} en un ${vehicleStr}.
+  const prompt = `Busca videos de YouTube reales sobre diagnosticar o reparar codigos ${codesStr} en ${vehicleStr}.
 
-Busca en YouTube ahora. Necesito los links reales.
+Usa la herramienta de busqueda para encontrar videos reales en YouTube.
 
-Responde SOLO asi (JSON, sin markdown):
+Responde SOLO un array JSON (sin markdown, sin texto extra):
 [
-  {"title": "Titulo", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "channel": "Canal", "description": "Desc"}
+  {"title": "Titulo del video", "url": "https://www.youtube.com/watch?v=XXXXXXXXXXX", "channel": "Canal", "description": "Descripcion"}
 ]
 
-Si no encuentras videos reales, responde: []`;
+REGLAS:
+- Los IDs de video (XXXXXXXXXXX) deben ser reales, de 11 caracteres
+- Si no encontraste videos reales, responde: []
+- NUNCA inventes IDs`;
 
-  for (let attempt = 0; attempt < 3; attempt++) {
+  const models = [
+    { model: "gemini-2.5-flash" as const, tools: true },
+    { model: "gemini-2.5-flash" as const, tools: false },
+    { model: "gemini-3.1-pro-preview" as const, tools: true },
+    { model: "gemini-3.1-pro-preview" as const, tools: false },
+  ];
+
+  for (let i = 0; i < models.length; i++) {
     try {
-      const useSearch = attempt < 2;
+      const m = models[i];
       const model = ai.getGenerativeModel({
-        model: "gemini-3.1-pro-preview",
-        tools: useSearch ? [{ googleSearch: {} } as any] : undefined,
-        generationConfig: { maxOutputTokens: 4096 },
+        model: m.model,
+        tools: m.tools ? [{ googleSearch: {} } as any] : undefined,
+        generationConfig: { maxOutputTokens: 8192 },
       });
 
       const result = await model.generateContent(prompt);
       const text = result.response.text();
       const reason = result.response.candidates?.[0]?.finishReason;
 
-      console.log("YT attempt", attempt + 1, "search:", useSearch, "reason:", reason, "len:", text.length, "preview:", text.substring(0, 200));
+      console.log("YT search", m.model, "tools:", m.tools, "reason:", reason, "len:", text.length);
 
       if (!text || text.length < 5) continue;
 
@@ -431,14 +441,17 @@ Si no encuentras videos reales, responde: []`;
       if (Array.isArray(parsed)) videos = parsed;
       else if (parsed?.video_resources) videos = parsed.video_resources;
 
-      const valid = videos.filter((v: any) => v.url?.includes("youtube.com/watch") && v.title);
-      if (valid.length > 0) return valid;
-
+      const withUrl = videos.filter((v: any) => v.url?.includes("youtube.com/watch") && v.title);
+      if (withUrl.length > 0) {
+        console.log("YT search found", withUrl.length, "videos with", m.model);
+        return withUrl;
+      }
     } catch (e) {
-      console.error("YT error attempt", attempt + 1, e);
+      console.error("YT search error:", e);
     }
   }
 
+  console.log("YT search: no videos found after all attempts");
   return [];
 }
 
@@ -454,26 +467,55 @@ async function validateYouTubeId(videoId: string): Promise<boolean> {
   }
 }
 
-export async function validateVideoResources(videos: VideoResource[]): Promise<VideoResource[]> {
+export async function validateVideoResources(
+  videos: VideoResource[],
+  dtcCodes?: string[],
+  vehicleInfo?: VehicleInfo,
+  locale?: string
+): Promise<VideoResource[]> {
   if (!videos || videos.length === 0) return [];
 
-  const results = await Promise.all(
+  const validated = await Promise.all(
     videos.map(async (v) => {
       const match = v.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
       if (!match) return null;
       const videoId = match[1];
       const valid = await validateYouTubeId(videoId);
-      if (!valid) {
-        console.log("Invalid YT ID:", videoId, "- converting to search link");
-        const searchQuery = encodeURIComponent(`${v.title} ${v.channel || ""}`);
-        return {
-          ...v,
-          url: `https://www.youtube.com/results?search_query=${searchQuery}`,
-        };
-      }
-      return v;
+      if (valid) return v;
+      console.log("Invalid YT ID:", videoId, "- will search for replacement");
+      return { ...v, _invalid: true as const, _videoId: videoId };
     })
   );
 
-  return results.filter(Boolean) as VideoResource[];
+  const hasInvalid = validated.some((v: any) => v?._invalid);
+  if (hasInvalid && dtcCodes && vehicleInfo) {
+    console.log("Searching replacement videos for", dtcCodes.join(","));
+    const replacements = await searchYouTubeVideos(dtcCodes, vehicleInfo, locale);
+
+    if (replacements.length > 0) {
+      const replacementValidated = await Promise.all(
+        replacements.map(async (r) => {
+          const m = r.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+          if (!m) return null;
+          const ok = await validateYouTubeId(m[1]);
+          return ok ? r : null;
+        })
+      );
+      const good = replacementValidated.filter(Boolean) as VideoResource[];
+      if (good.length > 0) {
+        console.log("Found", good.length, "valid replacement videos");
+        return good;
+      }
+    }
+  }
+
+  return validated
+    .filter(Boolean)
+    .map((v: any) => {
+      if (v._invalid) {
+        const searchQuery = encodeURIComponent(`${v.title} ${v.channel || ""}`);
+        return { ...v, url: `https://www.youtube.com/results?search_query=${searchQuery}` };
+      }
+      return v;
+    }) as VideoResource[];
 }
