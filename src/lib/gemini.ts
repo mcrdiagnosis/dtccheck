@@ -2,26 +2,26 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = `Eres un técnico automotriz experto con más de 20 años de experiencia. Analiza los códigos DTC proporcionados para el vehículo especificado.
+const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo especificado.
 
-DEBES buscar información usando la herramienta de búsqueda de Google en:
-1. Foros especializados: automotive-forums.com, mechanicadvice reddit, bimmerfest, toyota-nation, honda-tech, etc.
-2. Videos de YouTube: busca videos que expliquen y muestren cómo diagnosticar y reparar el problema específico para este vehículo.
+Busca información en foros especializados usando la herramienta de búsqueda de Google.
 
-IMPORTANTE: Responde SIEMPRE en JSON válido con esta estructura exacta:
+Responde SIEMPRE en JSON válido con esta estructura exacta:
 {
   "dtc_codes": [{"code": "P0301", "description": "Misfire en cilindro 1", "severity": "high"}],
-  "vehicle_context": {"affected_systems": ["ignicion", "combustible"]},
+  "vehicle_context": {"affected_systems": ["ignicion"]},
   "probable_causes": [
-    {"cause": "Bobina de encendido defectuosa", "probability": 85, "sources": ["url_del_foro"]},
-    {"cause": "Bujía desgastada", "probability": 70, "sources": ["url"]}
+    {"cause": "Bobina defectuosa", "probability": 85, "sources": ["url"]}
   ],
   "solutions": [
     {
-      "description": "Reemplazar bobina de encendido del cilindro 1",
+      "description": "Reemplazar bobina",
       "difficulty": "easy",
       "estimated_cost": "$30-80 USD",
       "steps": ["Paso 1...", "Paso 2..."],
+      "sources": ["url"]
+    }
+  ],
       "sources": ["url"]
     }
   ],
@@ -52,92 +52,79 @@ Asegúrate de que:
 - Las pruebas interactivas sean prácticas y seguras de realizar
 - Incluyas fuentes reales de foros cuando sea posible
 - Los costs sean estimaciones realistas
-- Los videos sean específicos para el vehículo y código DTC mencionado
-- TODAS las URLs en sources, forum_insights.url, y video_resources.url sean URLs COMPLETAS (incluyendo https:// y la ruta completa), NO solo dominios
-- Los campos "forum" en forum_insights deben ser el nombre del foro/hilo, y "url" debe ser la URL completa al hilo o post específico
-
-CRÍTICO SOBRE VIDEO_RESOURCES:
-- video_resources DEBE contener SOLO videos de YouTube que HAYAS ENCONTRADO REALMENTE en tu búsqueda
-- Los IDs de video de YouTube son SIEMPRE de exactamente 11 caracteres alfanuméricos (ej: dQw4w9WgXcQ)
-- Si NO encontraste videos reales de YouTube en tu búsqueda, devuelve video_resources como array vacío []
-- NUNCA inventes, construyas o guesses video IDs. Un ID falso es peor que no tener video.
-- Las URLs deben ser https://www.youtube.com/watch?v=XXXXXXXXXXX donde XXXXXXXXXXX es un ID real`;
+- Las URLs deben ser completas (con https://)
+- Máximo 4 soluciones con máximo 4 pasos cada una
+- Máximo 3 pruebas interactivas con máximo 4 pasos cada una
+- video_resources: SOLO videos reales encontrados. Si no hay, array vacío []
+- NUNCA inventes video IDs de YouTube
+- CRÍTICO: Responde SOLO JSON válido, sin texto adicional. Sé conciso para no truncar la respuesta.`;
 
 let genAI: GoogleGenerativeAI | null = null;
 
 function safeJsonParse(raw: string): any {
   let text = raw;
-
   const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (mdMatch) text = mdMatch[1].trim();
-
   text = text.replace(/```/g, "");
-
   let jsonStr = text.trim();
   if (!jsonStr.startsWith("{")) {
     const m = jsonStr.match(/\{[\s\S]*/);
     if (m) jsonStr = m[0];
   }
 
-  const balancedMatch = (() => {
-    const first = jsonStr.indexOf("{");
+  const findBalanced = (s: string): string | null => {
+    const first = s.indexOf("{");
     if (first === -1) return null;
-    let depth = 0;
-    let inStr = false;
-    let esc = false;
-    for (let i = first; i < jsonStr.length; i++) {
-      const c = jsonStr[i];
+    let depth = 0, inStr = false, esc = false;
+    for (let i = first; i < s.length; i++) {
+      const c = s[i];
       if (esc) { esc = false; continue; }
       if (c === "\\") { esc = true; continue; }
       if (c === '"') { inStr = !inStr; continue; }
       if (inStr) continue;
       if (c === "{") depth++;
-      else if (c === "}") { depth--; if (depth === 0) return jsonStr.substring(first, i + 1); }
+      else if (c === "}") { depth--; if (depth === 0) return s.substring(first, i + 1); }
     }
     return null;
-  })();
+  };
 
-  if (balancedMatch) jsonStr = balancedMatch;
-
-  const clean = (s: string) => s
-    .replace(/,\s*([}\]])/g, "$1")
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "")
-    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
-
-  const candidates = [jsonStr, clean(jsonStr)];
-
-  for (const c of candidates) {
-    try { return JSON.parse(c); } catch {}
+  const balanced = findBalanced(jsonStr);
+  if (balanced) {
+    try { return JSON.parse(balanced); } catch {}
+    const cleaned = balanced.replace(/,\s*([}\]])/g, "$1");
+    try { return JSON.parse(cleaned); } catch {}
   }
 
-  let recovered = jsonStr.trimEnd();
-  if (!recovered.endsWith("}")) {
-    try {
-      const openBrackets: string[] = [];
-      let inStr = false;
-      let esc = false;
-      for (let i = 0; i < recovered.length; i++) {
-        const ch = recovered[i];
-        if (esc) { esc = false; continue; }
-        if (ch === "\\") { esc = true; continue; }
-        if (ch === '"') { inStr = !inStr; continue; }
-        if (inStr) continue;
-        if (ch === "{" || ch === "[") openBrackets.push(ch);
-        else if (ch === "}") { if (openBrackets[openBrackets.length - 1] === "{") openBrackets.pop(); }
-        else if (ch === "]") { if (openBrackets[openBrackets.length - 1] === "[") openBrackets.pop(); }
-      }
-      if (inStr) recovered += '"';
-      if (recovered.endsWith(",")) recovered = recovered.slice(0, -1);
-      for (let i = openBrackets.length - 1; i >= 0; i--) {
-        recovered += openBrackets[i] === "{" ? "}" : "]";
-      }
-      recovered = recovered.replace(/,\s*([}\]])/g, "$1");
-      console.log("Truncation recovery: added", openBrackets.length, "closing brackets");
-      return JSON.parse(recovered);
-    } catch (e) {
-      console.error("Truncation recovery failed:", e);
-    }
+  console.log("Attempting truncation recovery, raw length:", raw.length);
+  let s = jsonStr.trimEnd();
+  const stack: string[] = [];
+  let inStr = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; }
+    if (c === "\\") { esc = true; continue; }
+    if (c === '"') { inStr = !inStr; continue; }
+    if (inStr) continue;
+    if (c === "{" || c === "[") stack.push(c);
+    else if (c === "}" && stack[stack.length - 1] === "{") stack.pop();
+    else if (c === "]" && stack[stack.length - 1] === "[") stack.pop();
+  }
+  if (inStr) s += '"';
+  s = s.trimEnd();
+  if (s.endsWith(",")) s = s.slice(0, -1).trimEnd();
+  if (/"[^"]*"\s*:\s*$/.test(s)) s += "null";
+  if (s.endsWith(":")) s = s.slice(0, -1).trimEnd();
+  if (s.endsWith(",")) s = s.slice(0, -1).trimEnd();
+  for (let i = stack.length - 1; i >= 0; i--) {
+    s += stack[i] === "{" ? "}" : "]";
+  }
+  s = s.replace(/,\s*([}\]])/g, "$1");
+  try {
+    const result = JSON.parse(s);
+    console.log("Truncation recovery succeeded");
+    return result;
+  } catch (e) {
+    console.error("Truncation recovery failed:", (e as Error).message);
   }
 
   console.error("safeJsonParse FAILED. Raw length:", raw.length);
