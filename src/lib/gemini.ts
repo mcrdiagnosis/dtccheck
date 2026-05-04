@@ -117,7 +117,7 @@ function getGenAI() {
 function getModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-2.5-flash",
     systemInstruction: SYSTEM_PROMPT,
     tools: [{ googleSearch: {} } as any],
     generationConfig: { maxOutputTokens: 65536 },
@@ -127,7 +127,7 @@ function getModel() {
 function getVisionModel() {
   const ai = getGenAI();
   return ai.getGenerativeModel({
-    model: "gemini-3.1-pro-preview",
+    model: "gemini-2.5-flash",
     generationConfig: { maxOutputTokens: 65536 },
   });
 }
@@ -418,7 +418,7 @@ REGLAS CRITICAS:
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
       const model = ai.getGenerativeModel({
-        model: "gemini-3.1-pro-preview",
+        model: "gemini-2.5-flash",
         tools: attempt === 0 ? [{ googleSearch: {} } as any] : undefined,
         generationConfig: { maxOutputTokens: 8192 },
       });
