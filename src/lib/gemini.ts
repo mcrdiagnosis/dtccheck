@@ -65,45 +65,54 @@ CRÍTICO SOBRE VIDEO_RESOURCES:
 
 let genAI: GoogleGenerativeAI | null = null;
 
-function safeJsonParse(text: string): any {
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) return null;
+function safeJsonParse(raw: string): any {
+  let text = raw;
 
-  let jsonStr = jsonMatch[0];
+  const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (mdMatch) text = mdMatch[1].trim();
 
-  try {
-    return JSON.parse(jsonStr);
-  } catch {}
+  text = text.replace(/```/g, "");
 
-  const fixes = [
-    (s: string) => s.replace(/,\s*([}\]])/g, "$1"),
-    (s: string) => s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""),
-    (s: string) => s.replace(/(\w+)\s*:\s*'([^']*)'/g, '"$1": "$2"'),
-    (s: string) => s.replace(/[\x00-\x1f]/g, (c) => c === "\n" || c === "\r" || c === "\t" ? "" : ""),
-  ];
-
-  for (const fix of fixes) {
-    try {
-      return JSON.parse(fix(jsonStr));
-    } catch {}
+  let jsonStr = text.trim();
+  if (!jsonStr.startsWith("{")) {
+    const m = jsonStr.match(/\{[\s\S]*/);
+    if (m) jsonStr = m[0];
   }
 
-  let start = jsonStr.indexOf("{");
-  let depth = 0;
-  let lastValidEnd = -1;
-  for (let i = start; i < jsonStr.length; i++) {
-    if (jsonStr[i] === "{") depth++;
-    else if (jsonStr[i] === "}") depth--;
-    if (depth === 0) { lastValidEnd = i; break; }
-  }
-  if (lastValidEnd > 0) {
-    try {
-      const cleaned = jsonStr.substring(start, lastValidEnd + 1).replace(/,\s*([}\]])/g, "$1");
-      return JSON.parse(cleaned);
-    } catch {}
+  const balancedMatch = (() => {
+    const first = jsonStr.indexOf("{");
+    if (first === -1) return null;
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = first; i < jsonStr.length; i++) {
+      const c = jsonStr[i];
+      if (esc) { esc = false; continue; }
+      if (c === "\\") { esc = true; continue; }
+      if (c === '"') { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === "{") depth++;
+      else if (c === "}") { depth--; if (depth === 0) return jsonStr.substring(first, i + 1); }
+    }
+    return null;
+  })();
+
+  if (balancedMatch) jsonStr = balancedMatch;
+
+  const clean = (s: string) => s
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*\/\/.*$/gm, "")
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f]/g, "");
+
+  const candidates = [jsonStr, clean(jsonStr)];
+
+  for (const c of candidates) {
+    try { return JSON.parse(c); } catch {}
   }
 
-  console.error("Failed to parse JSON. First 2000 chars:", jsonStr.substring(0, 2000));
+  console.error("safeJsonParse FAILED. Raw length:", raw.length);
+  console.error("Raw first 3000:", raw.substring(0, 3000));
   return null;
 }
 
@@ -268,72 +277,76 @@ Enfoca el análisis específicamente en este sistema. Las pruebas interactivas d
 4. Para sources y urls: usa SOLO URLs reales y completas (con path completo) que hayas encontrado en tu búsqueda. Si no tienes una URL real, pon un string vacío "". NUNCA inventes URLs.
 5. Para video_resources: incluye SOLO videos de YouTube que hayas encontrado realmente en tu búsqueda. Si no encontraste videos reales, devuelve un array vacío. NUNCA inventes video IDs.
 6. Los campos "sources" en probable_causes y solutions deben contener URLs completas (https://dominio.com/path/to/thread), NO solo dominios.
-Proporciona un análisis completo con búsqueda en foros reales. Responde SOLO en JSON válido.`;
+Proporciona un análisis completo con búsqueda en foros reales.
+CRÍTICO: Tu respuesta DEBE ser ÚNICAMENTE JSON válido. NO incluyas texto antes ni después del JSON. NO uses markdown code blocks. Responde SOLO el objeto JSON.`;
 
-  const result = await model.generateContent(userPrompt);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const result = await model.generateContent(userPrompt);
+    const response = result.response;
+    const text = response.text();
+    console.log("analyzeDTCs attempt", attempt + 1, "response length:", text.length, "first 200:", text.substring(0, 200));
 
-  const response = result.response;
-  const text = response.text();
+    const analysis: AIAnalysis = safeJsonParse(text);
+    if (analysis && analysis.dtc_codes?.length > 0) {
+      try {
+        const candidate = response.candidates?.[0];
+        const groundingMeta = (candidate?.groundingMetadata as any);
+        const groundingChunks = groundingMeta?.groundingChunks || groundingMeta?.searchEntryPoint?.renderedContent;
 
-  const analysis: AIAnalysis = safeJsonParse(text);
-  if (!analysis) {
-    throw new Error("AI response is not valid JSON");
-  }
+        if (groundingChunks && Array.isArray(groundingChunks)) {
+          const realUrls: { title: string; url: string }[] = [];
+          for (const chunk of groundingChunks) {
+            if (chunk.web?.uri) {
+              realUrls.push({ title: chunk.web?.title || "", url: chunk.web.uri });
+            }
+          }
 
-  try {
-    const candidate = response.candidates?.[0];
-    const groundingMeta = (candidate?.groundingMetadata as any);
-    const groundingChunks = groundingMeta?.groundingChunks || groundingMeta?.searchEntryPoint?.renderedContent;
-    const searchQueries = groundingMeta?.webSearchQueries || [];
-
-    if (groundingChunks && Array.isArray(groundingChunks)) {
-      const realUrls: { title: string; url: string }[] = [];
-      for (const chunk of groundingChunks) {
-        if (chunk.web?.uri) {
-          realUrls.push({ title: chunk.web?.title || "", url: chunk.web.uri });
-        }
-      }
-
-      if (realUrls.length > 0) {
-        for (const cause of analysis.probable_causes || []) {
-          if (!cause.sources || cause.sources.length === 0 || cause.sources.every(s => !s.startsWith("http") || s.split("/").length < 4)) {
-            const relevant = realUrls
-              .filter(u => u.title.toLowerCase().includes(cause.cause.toLowerCase().split(" ").slice(0, 3).join(" ")) || cause.cause.toLowerCase().split(" ").some(w => u.title.toLowerCase().includes(w)))
-              .slice(0, 2);
-            cause.sources = relevant.length > 0 ? relevant.map(u => u.url) : realUrls.slice(0, 2).map(u => u.url);
-          } else {
-            cause.sources = cause.sources.map(s => {
-              if (!s.startsWith("http") || s.split("/").length < 4) {
-                const match = realUrls.find(u => u.title.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(u.title.toLowerCase()));
-                return match ? match.url : s;
+          if (realUrls.length > 0) {
+            for (const cause of analysis.probable_causes || []) {
+              if (!cause.sources || cause.sources.length === 0 || cause.sources.every((s: string) => !s.startsWith("http") || s.split("/").length < 4)) {
+                const relevant = realUrls
+                  .filter(u => u.title.toLowerCase().includes(cause.cause.toLowerCase().split(" ").slice(0, 3).join(" ")) || cause.cause.toLowerCase().split(" ").some(w => u.title.toLowerCase().includes(w)))
+                  .slice(0, 2);
+                cause.sources = relevant.length > 0 ? relevant.map(u => u.url) : realUrls.slice(0, 2).map(u => u.url);
+              } else {
+                cause.sources = cause.sources.map((s: string) => {
+                  if (!s.startsWith("http") || s.split("/").length < 4) {
+                    const match = realUrls.find(u => u.title.toLowerCase().includes(s.toLowerCase()) || s.toLowerCase().includes(u.title.toLowerCase()));
+                    return match ? match.url : s;
+                  }
+                  return s;
+                });
               }
-              return s;
-            });
-          }
-        }
+            }
 
-        for (const insight of analysis.forum_insights || []) {
-          if (!insight.url || !insight.url.startsWith("http") || insight.url.split("/").length < 4) {
-            const match = realUrls.find(u =>
-              u.title.toLowerCase().includes(insight.forum.toLowerCase().split(" ")[0]) ||
-              insight.summary.toLowerCase().split(" ").some(w => w.length > 4 && u.title.toLowerCase().includes(w))
-            );
-            if (match) insight.url = match.url;
-          }
-        }
+            for (const insight of analysis.forum_insights || []) {
+              if (!insight.url || !insight.url.startsWith("http") || insight.url.split("/").length < 4) {
+                const match = realUrls.find(u =>
+                  u.title.toLowerCase().includes(insight.forum.toLowerCase().split(" ")[0]) ||
+                  insight.summary.toLowerCase().split(" ").some(w => w.length > 4 && u.title.toLowerCase().includes(w))
+                );
+                if (match) insight.url = match.url;
+              }
+            }
 
-        for (const sol of analysis.solutions || []) {
-          if (!sol.sources || sol.sources.length === 0) {
-            sol.sources = realUrls.slice(0, 1).map(u => u.url);
+            for (const sol of analysis.solutions || []) {
+              if (!sol.sources || sol.sources.length === 0) {
+                sol.sources = realUrls.slice(0, 1).map(u => u.url);
+              }
+            }
           }
         }
+      } catch (e) {
+        console.error("Grounding metadata extraction error:", e);
       }
+
+      return analysis;
     }
-  } catch (e) {
-    console.error("Grounding metadata extraction error:", e);
+
+    console.warn("analyzeDTCs attempt", attempt + 1, "failed, parsed:", !!analysis, "dtc_codes:", analysis?.dtc_codes?.length || 0);
   }
 
-  return analysis;
+  throw new Error("AI response is not valid JSON after 3 attempts");
 }
 
 export async function reanalyzeWithTestResults(
