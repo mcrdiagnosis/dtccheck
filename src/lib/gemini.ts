@@ -38,7 +38,7 @@ Reglas:
 
 let genAI: GoogleGenerativeAI | null = null;
 
-function safeJsonParse(raw: string): any {
+export function safeJsonParse(raw: string): any {
   let text = raw;
   const mdMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (mdMatch) text = mdMatch[1].trim();

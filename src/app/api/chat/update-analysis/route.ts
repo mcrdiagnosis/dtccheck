@@ -1,16 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
-let genAI: GoogleGenerativeAI | null = null;
-
-function getGenAI() {
-  if (!genAI) {
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
-    if (!apiKey) throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
-    genAI = new GoogleGenerativeAI(apiKey);
-  }
-  return genAI;
-}
+import { safeJsonParse } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
   try {
@@ -20,11 +9,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required data" }, { status: 400 });
     }
 
-    const ai = getGenAI();
-    const model = ai.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      tools: [{ googleSearch: {} } as any],
-    });
+    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "API key not configured" }, { status: 500 });
+    }
+
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const ai = new GoogleGenerativeAI(apiKey);
 
     const localeLangMap: Record<string, string> = {
       es: "español", en: "English", pt: "português",
@@ -35,78 +26,85 @@ export async function POST(request: NextRequest) {
       ? `${vehicle_info.year} ${vehicle_info.make} ${vehicle_info.model} ${vehicle_info.engine || ""}`.trim()
       : "Unknown vehicle";
 
+    const lastUserMsgs = chat_history
+      .filter((m: any) => m.role === "user")
+      .slice(-6)
+      .map((m: any) => m.content);
+    const lastAiMsgs = chat_history
+      .filter((m: any) => m.role === "assistant")
+      .slice(-6)
+      .map((m: any) => m.content);
+
     const chatSummary = chat_history
+      .slice(-12)
       .map((m: any) => `${m.role === "user" ? "Usuario" : "Mecánico IA"}: ${m.content}`)
       .join("\n");
 
-    const userPrompt = `Eres un técnico automotriz experto. Tienes un diagnóstico existente para un ${vehicleStr} y has estado conversando con el dueño del vehículo. Basándote en la información NUEVA proporcionada por el usuario en el chat, actualiza el análisis.
+    const slimAnalysis = { ...current_analysis };
+    delete (slimAnalysis as any).video_resources;
 
-    Códigos DTC: ${current_analysis.dtc_codes?.map((c: any) => `${c.code}: ${c.description}`).join(", ") || "N/A"}
+    const userPrompt = `Eres un técnico automotriz experto. Actualiza el diagnóstico de un ${vehicleStr} con la información NUEVA del chat.
 
-    ANÁLISIS ACTUAL:
-${JSON.stringify(current_analysis, null, 2)}
+Códigos DTC: ${current_analysis.dtc_codes?.map((c: any) => `${c.code}: ${c.description}`).join(", ") || "N/A"}
 
-    CONVERSACIÓN CON EL USUARIO (usa la info nueva que el usuario aporta):
+ANÁLISIS ACTUAL:
+${JSON.stringify(slimAnalysis)}
+
+CHAT RECIENTE:
 ${chatSummary}
 
-    ${dtc_code ? `Enfoque especial en el código: ${dtc_code}` : ""}
+${dtc_code ? `Enfoque especial en: ${dtc_code}` : ""}
 
-    INSTRUCCIONES:
-    1. Incorpora la información nueva del usuario al análisis (causas confirmadas, síntomas observados, reparaciones ya intentadas, etc.)
-    2. Ajusta las probabilidades de las causas según la nueva información
-    3. Actualiza o agrega soluciones relevantes
-    4. Actualiza las pruebas interactivas si la nueva información lo requiere
-    5. Si el usuario confirmó la causa raíz, pon esa causa al 100% y ajusta el resto
-    6. Mantén la misma estructura JSON exacta
+INSTRUCCIONES:
+1. Incorpora la info nueva del usuario (causas confirmadas, síntomas, reparaciones intentadas)
+2. Ajusta probabilidades según la nueva info
+3. Si el usuario confirmó la causa raíz, ponla al 100%
+4. Mantén la misma estructura JSON
 
-    IMPORTANTISIMO:
-    1. TODA tu respuesta DEBE estar en ${lang}.
-    2. severity: "low", "medium", "high", "critical" (SIEMPRE en inglés)
-    3. difficulty: "easy", "medium", "hard" (SIEMPRE en inglés)
-    4. Los campos "sources" y urls deben ser URLs reales y completas. Si no tienes una URL real, pon string vacío "".
-    5. video_resources: SOLO videos reales encontrados. Si no hay, array vacío [].
+REGLAS:
+- Responde SOLO JSON válido, sin markdown
+- Todo en ${lang}
+- severity: "low", "medium", "high", "critical" (inglés)
+- difficulty: "easy", "medium", "hard" (inglés)
+- sources: URLs reales o string vacío ""
+- video_resources: [] (no incluyas videos)`;
 
-    Responde SOLO en JSON válido con la misma estructura exacta del análisis actual.`;
+    let analysis: any = null;
 
-    const result = await model.generateContent(userPrompt);
-    const response = result.response;
-    const text = response.text();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const useSearch = attempt === 0;
+        const model = ai.getGenerativeModel({
+          model: "gemini-2.5-flash",
+          tools: useSearch ? [{ googleSearch: {} } as any] : undefined,
+          generationConfig: { maxOutputTokens: 65536 },
+        });
 
-    let analysis = null;
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        let jsonStr = jsonMatch[0];
-        jsonStr = jsonStr.replace(/,\s*([}\]])/g, "$1");
-        jsonStr = jsonStr.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
-        analysis = JSON.parse(jsonStr);
+        const result = await model.generateContent(userPrompt);
+        const text = result.response.text();
+        const reason = result.response.candidates?.[0]?.finishReason;
+
+        console.log("Update analysis attempt", attempt + 1, "reason:", reason, "len:", text.length);
+
+        if (!text || text.length < 5) continue;
+
+        const parsed = safeJsonParse(text);
+        if (parsed && typeof parsed === "object") {
+          analysis = parsed;
+          break;
+        }
+      } catch (e) {
+        console.error("Update analysis attempt", attempt + 1, "error:", e);
       }
-    } catch {}
-    if (!analysis) {
-      return NextResponse.json({ error: "AI response is not valid JSON" }, { status: 500 });
     }
 
-    try {
-      const candidate = response.candidates?.[0];
-      const groundingMeta = candidate?.groundingMetadata as any;
-      const groundingChunks = groundingMeta?.groundingChunks || [];
+    if (!analysis) {
+      return NextResponse.json({ error: "Could not parse AI response after 3 attempts" }, { status: 500 });
+    }
 
-      if (Array.isArray(groundingChunks) && groundingChunks.length > 0) {
-        const realUrls: { title: string; url: string }[] = [];
-        for (const chunk of groundingChunks) {
-          if (chunk.web?.uri) {
-            realUrls.push({ title: chunk.web?.title || "", url: chunk.web.uri });
-          }
-        }
-        if (realUrls.length > 0) {
-          for (const cause of analysis.probable_causes || []) {
-            if (!cause.sources || cause.sources.length === 0) {
-              cause.sources = realUrls.slice(0, 2).map((u: any) => u.url);
-            }
-          }
-        }
-      }
-    } catch {}
+    if (current_analysis.video_resources) {
+      analysis.video_resources = current_analysis.video_resources;
+    }
 
     return NextResponse.json({ analysis });
   } catch (error: any) {
