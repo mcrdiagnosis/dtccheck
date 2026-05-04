@@ -441,3 +441,39 @@ Si no encuentras videos reales, responde: []`;
 
   return [];
 }
+
+async function validateYouTubeId(videoId: string): Promise<boolean> {
+  try {
+    const res = await fetch(`https://img.youtube.com/vi/${videoId}/mqdefault.jpg`, {
+      method: "HEAD",
+      signal: AbortSignal.timeout(3000),
+    });
+    return res.ok && (res.headers.get("content-type")?.startsWith("image/") ?? false);
+  } catch {
+    return false;
+  }
+}
+
+export async function validateVideoResources(videos: VideoResource[]): Promise<VideoResource[]> {
+  if (!videos || videos.length === 0) return [];
+
+  const results = await Promise.all(
+    videos.map(async (v) => {
+      const match = v.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
+      if (!match) return null;
+      const videoId = match[1];
+      const valid = await validateYouTubeId(videoId);
+      if (!valid) {
+        console.log("Invalid YT ID:", videoId, "- converting to search link");
+        const searchQuery = encodeURIComponent(`${v.title} ${v.channel || ""}`);
+        return {
+          ...v,
+          url: `https://www.youtube.com/results?search_query=${searchQuery}`,
+        };
+      }
+      return v;
+    })
+  );
+
+  return results.filter(Boolean) as VideoResource[];
+}

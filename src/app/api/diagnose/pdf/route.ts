@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractVehicleInfo } from "@/lib/pdf-parser";
-import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos } from "@/lib/gemini";
+import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
       aiAnalysis.video_resources = videos;
     } else {
       console.log("Videos found in analysis:", aiAnalysis.video_resources.length);
+    }
+
+    if (aiAnalysis.video_resources && aiAnalysis.video_resources.length > 0) {
+      aiAnalysis.video_resources = await validateVideoResources(aiAnalysis.video_resources);
     }
 
     const id = crypto.randomUUID();
