@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useRouter } from "@/i18n/routing";
 import { useForm } from "react-hook-form";
@@ -70,6 +70,8 @@ export default function DiagnosePage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [dragActive, setDragActive] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const form = useForm<DiagnoseForm>({
     resolver: zodResolver(diagnoseSchema),
@@ -135,6 +137,11 @@ export default function DiagnosePage() {
 
     setIsAnalyzing(true);
     setProgress(0);
+    setElapsed(0);
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
 
     const progressInterval = setInterval(() => {
       setProgress((prev) => {
@@ -194,6 +201,7 @@ export default function DiagnosePage() {
       clearInterval(progressInterval);
       toast.error(error.message || "Error al analizar");
     } finally {
+      if (timerRef.current) clearInterval(timerRef.current);
       setIsAnalyzing(false);
     }
   };
@@ -390,6 +398,7 @@ export default function DiagnosePage() {
                 <div className="flex items-center gap-3 mb-3">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
                   <span className="font-medium">{t("analyzing")}</span>
+                  <span className="text-muted-foreground font-mono">{elapsed}s</span>
                 </div>
                 <Progress value={progress} className="h-2" />
                 <p className="text-sm text-muted-foreground mt-2">

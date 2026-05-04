@@ -20,9 +20,13 @@ export async function POST(request: NextRequest) {
 
     const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale);
 
-    console.log("Searching YouTube videos...");
-    const videos = await searchYouTubeVideos(dtcArray, vehicle_info, locale);
-    aiAnalysis.video_resources = videos.length > 0 ? videos : (aiAnalysis.video_resources || []);
+    if (!aiAnalysis.video_resources || aiAnalysis.video_resources.length === 0) {
+      console.log("No videos in analysis, searching YouTube...");
+      const videos = await searchYouTubeVideos(dtcArray, vehicle_info, locale);
+      aiAnalysis.video_resources = videos;
+    } else {
+      console.log("Videos found in analysis:", aiAnalysis.video_resources.length);
+    }
 
     const id = crypto.randomUUID();
     const diagnostic = {
