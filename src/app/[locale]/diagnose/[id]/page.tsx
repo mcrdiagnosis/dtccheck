@@ -251,18 +251,25 @@ export default function DiagnosticResultPage() {
           printWin.document.close();
           printWin.print();
         }
+        setGeneratingPdf(false);
         return;
       }
 
-      const container = document.createElement("div");
-      container.innerHTML = html;
-      document.body.appendChild(container);
+      const iframe = document.createElement("iframe");
+      iframe.style.cssText = "position:fixed;left:-9999px;width:800px;height:600px;border:none;";
+      document.body.appendChild(iframe);
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!iframeDoc) { document.body.removeChild(iframe); setGeneratingPdf(false); return; }
+      iframeDoc.open();
+      iframeDoc.write(`<!DOCTYPE html><html><head><style>body{margin:0;padding:0;}</style></head><body>${html}</body></html>`);
+      iframeDoc.close();
 
+      const container = iframeDoc.body;
       const opt: any = {
         margin: [10, 10, 10, 10],
         filename,
         image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
+        html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
         jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
         pagebreak: { mode: ["avoid-all", "css", "legacy"] },
       };
@@ -271,7 +278,7 @@ export default function DiagnosticResultPage() {
 
       if (action === "share") {
         const blob = await worker.toPdf().output("blob");
-        document.body.removeChild(container);
+        document.body.removeChild(iframe);
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.share) {
           await navigator.share({ files: [file], title: tr("shareTitle") });
@@ -285,7 +292,7 @@ export default function DiagnosticResultPage() {
         }
       } else {
         await worker.save();
-        document.body.removeChild(container);
+        document.body.removeChild(iframe);
       }
     } catch (err: any) {
       console.error("PDF error:", err);
