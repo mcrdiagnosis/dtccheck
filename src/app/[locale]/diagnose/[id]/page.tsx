@@ -69,7 +69,7 @@ const statusIcons = {
 };
 
 export default function DiagnosticResultPage() {
-  const t = useTranslations("result");
+  const tr = useTranslations("result");
   const tChat = useTranslations("chat");
   const params = useParams();
   const [diagnostic, setDiagnostic] = useState<Diagnostic | null>(null);
@@ -156,9 +156,9 @@ export default function DiagnosticResultPage() {
 
     const sevColor: Record<string, string> = { low: "#3b82f6", medium: "#eab308", high: "#f97316", critical: "#ef4444" };
     const diffLabel: Record<string, string> = {
-      easy: t("difficulty.easy"),
-      medium: t("difficulty.medium"),
-      hard: t("difficulty.hard"),
+      easy: tr("difficulty.easy"),
+      medium: tr("difficulty.medium"),
+      hard: tr("difficulty.hard"),
     };
 
     const codesHtml = (a.dtc_codes || []).map((c: any) =>
@@ -172,7 +172,7 @@ export default function DiagnosticResultPage() {
     const solutionsHtml = (a.solutions || []).map((s: any) =>
       `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
         <p style="font-weight:600;margin:0 0 4px;">${s.description}</p>
-        <p style="margin:0 0 4px;color:#666;font-size:13px;">${t("pdf.difficulty")} ${diffLabel[normalizeDifficulty(s.difficulty)] || s.difficulty} | ${t("pdf.estimatedCost")} ${s.estimated_cost}</p>
+        <p style="margin:0 0 4px;color:#666;font-size:13px;">${tr("pdf.difficulty")} ${diffLabel[normalizeDifficulty(s.difficulty)] || s.difficulty} | ${tr("pdf.estimatedCost")} ${s.estimated_cost}</p>
         ${s.steps?.length ? `<ol style="margin:6px 0 0 18px;padding:0;">${s.steps.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>` : ""}
       </div>`
     ).join("");
@@ -181,10 +181,10 @@ export default function DiagnosticResultPage() {
       `<div style="margin-bottom:16px;padding:12px;border:1px solid #e5e7eb;border-radius:8px;">
         <p style="font-weight:600;margin:0 0 4px;">${i + 1}. ${t.name}</p>
         <p style="margin:0 0 6px;color:#666;font-size:13px;">${t.description}</p>
-        ${t.tools_needed?.length ? `<p style="margin:0 0 4px;font-size:13px;"><b>${t("pdf.tools")}</b> ${t.tools_needed.join(", ")}</p>` : ""}
+        ${t.tools_needed?.length ? `<p style="margin:0 0 4px;font-size:13px;"><b>${tr("pdf.tools")}</b> ${t.tools_needed.join(", ")}</p>` : ""}
         <ol style="margin:4px 0 0 18px;padding:0;">${t.steps?.map((st: string) => `<li style="margin-bottom:2px;">${st}</li>`).join("")}</ol>
-        <p style="margin:6px 0 0;font-size:13px;color:#16a34a;">${t("pdf.ifPasses")} ${t.pass_implication}</p>
-        <p style="margin:2px 0 0;font-size:13px;color:#dc2626;">${t("pdf.ifFails")} ${t.fail_implication}</p>
+        <p style="margin:6px 0 0;font-size:13px;color:#16a34a;">${tr("pdf.ifPasses")} ${t.pass_implication}</p>
+        <p style="margin:2px 0 0;font-size:13px;color:#dc2626;">${tr("pdf.ifFails")} ${t.fail_implication}</p>
       </div>`
     ).join("");
 
@@ -192,54 +192,54 @@ export default function DiagnosticResultPage() {
       `<div style="margin-bottom:8px;padding:8px 12px;border-left:3px solid #3b82f6;background:#f8fafc;border-radius:0 6px 6px 0;">
         <p style="font-weight:600;margin:0;">${f.forum}</p>
         <p style="margin:4px 0 0;font-size:13px;">${f.summary}</p>
-        ${f.url ? `<a href="${f.url}" style="font-size:12px;color:#3b82f6;">${t("pdf.viewSource")}</a>` : ""}
+        ${f.url ? `<a href="${f.url}" style="font-size:12px;color:#3b82f6;">${tr("pdf.viewSource")}</a>` : ""}
       </div>`
     ).join("");
 
     const modulesHtml = diagnostic?.modules?.length ? diagnostic.modules.map((m: any) =>
       `<div style="margin-bottom:8px;">
         <p style="font-weight:600;margin:0;">${m.module}</p>
-        <p style="margin:2px 0 0;color:#666;">${t("pdf.dtcCodes")}: ${m.codes.join(", ")}</p>
+        <p style="margin:2px 0 0;color:#666;">${tr("pdf.dtcCodes")}: ${m.codes.join(", ")}</p>
       </div>`
     ).join("") : "";
 
     return `<div style="font-family:system-ui,-apple-system,sans-serif;color:#111;padding:20px;max-width:800px;margin:0 auto;">
       <div style="text-align:center;margin-bottom:24px;border-bottom:2px solid #3b82f6;padding-bottom:16px;">
-        <h1 style="margin:0;font-size:22px;color:#3b82f6;">${t("pdf.title")}</h1>
+        <h1 style="margin:0;font-size:22px;color:#3b82f6;">${tr("pdf.title")}</h1>
         <p style="margin:6px 0 0;font-size:15px;">${v?.year || ""} ${v?.make || ""} ${v?.model || ""} ${v?.engine || ""}</p>
-        <p style="margin:4px 0 0;font-size:12px;color:#666;">${t("pdf.generated")} ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+        <p style="margin:4px 0 0;font-size:12px;color:#666;">${tr("pdf.generated")} ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.summary")}</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.summary")}</h2>
         <p style="margin:0;line-height:1.6;">${a.summary || ""}</p>
       </div>
-      ${modulesHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.modules")}</h2>${modulesHtml}</div>` : ""}
+      ${modulesHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.modules")}</h2>${modulesHtml}</div>` : ""}
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.dtcCodes")}</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.dtcCodes")}</h2>
         <table style="width:100%;border-collapse:collapse;">${codesHtml}</table>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.causes")}</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.causes")}</h2>
         <table style="width:100%;border-collapse:collapse;">${causesHtml}</table>
       </div>
       <div style="margin-bottom:20px;">
-        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.solutions")}</h2>
+        <h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.solutions")}</h2>
         ${solutionsHtml}
       </div>
-      ${testsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.tests")}</h2>${testsHtml}</div>` : ""}
-      ${insightsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${t("pdf.forums")}</h2>${insightsHtml}</div>` : ""}
+      ${testsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.tests")}</h2>${testsHtml}</div>` : ""}
+      ${insightsHtml ? `<div style="margin-bottom:20px;"><h2 style="font-size:16px;color:#3b82f6;margin:0 0 8px;">${tr("pdf.forums")}</h2>${insightsHtml}</div>` : ""}
       <div style="text-align:center;margin-top:24px;padding-top:12px;border-top:1px solid #e5e7eb;font-size:11px;color:#999;">
-        ${t("pdf.footer")} - ${new Date().toLocaleDateString()}
+        ${tr("pdf.footer")} - ${new Date().toLocaleDateString()}
       </div>
     </div>`;
-  }, [diagnostic, t]);
+  }, [diagnostic, tr]);
 
   const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
     setGeneratingPdf(true);
     try {
       const html2pdf = (await import("html2pdf.js")).default;
       const v = diagnostic?.vehicle_info;
-      const filename = `${t("pdf.diagnosis")}${v?.make || t("pdf.vehicle")}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
+      const filename = `${tr("pdf.diagnosis")}${v?.make || tr("pdf.vehicle")}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
       const html = buildReportHtml();
       if (!html) { setGeneratingPdf(false); return; }
 
@@ -273,7 +273,7 @@ export default function DiagnosticResultPage() {
         document.body.removeChild(container);
         const file = new File([blob], filename, { type: "application/pdf" });
         if (navigator.share) {
-          await navigator.share({ files: [file], title: t("shareTitle") });
+          await navigator.share({ files: [file], title: tr("shareTitle") });
         } else {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
@@ -291,7 +291,7 @@ export default function DiagnosticResultPage() {
     } finally {
       setGeneratingPdf(false);
     }
-  }, [diagnostic, buildReportHtml, t]);
+  }, [diagnostic, buildReportHtml, tr]);
 
   if (loading) {
     return (
@@ -305,9 +305,9 @@ export default function DiagnosticResultPage() {
     return (
       <div className="container mx-auto px-4 py-16 text-center">
         <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold">{t("notFound")}</h2>
+        <h2 className="text-xl font-semibold">{tr("notFound")}</h2>
         <Link href="/diagnose">
-          <Button className="mt-4">{t("newDiagnosis")}</Button>
+          <Button className="mt-4">{tr("newDiagnosis")}</Button>
         </Link>
       </div>
     );
@@ -320,7 +320,7 @@ export default function DiagnosticResultPage() {
       <AuthGate>
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-3xl font-bold">{t("title")}</h1>
+          <h1 className="text-3xl font-bold">{tr("title")}</h1>
           <p className="text-muted-foreground mt-1">
             <Car className="inline h-4 w-4 mr-1" />
             {diagnostic.vehicle_info.year} {diagnostic.vehicle_info.make}{" "}
@@ -344,11 +344,11 @@ export default function DiagnosticResultPage() {
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("share")} disabled={generatingPdf}>
           <Share2 className="h-4 w-4" />
-          {t("whatsapp")}
+          {tr("whatsapp")}
         </Button>
         <Button variant="outline" size="sm" className="gap-2" onClick={() => generatePdf("print")} disabled={generatingPdf}>
           <Printer className="h-4 w-4" />
-          {t("print")}
+          {tr("print")}
         </Button>
       </div>
 
@@ -357,7 +357,7 @@ export default function DiagnosticResultPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-primary" />
-              {t("summary")}
+              {tr("summary")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -378,7 +378,7 @@ export default function DiagnosticResultPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-orange-500" />
-              {t("dtcCodes")}
+              {tr("dtcCodes")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -398,7 +398,7 @@ export default function DiagnosticResultPage() {
                           {mod.module}
                         </Badge>
                         <span className="text-xs text-muted-foreground">
-                          {mod.codes.length} {mod.codes.length === 1 ? t("code") : t("codes")}
+                          {mod.codes.length} {mod.codes.length === 1 ? tr("code") : tr("codes")}
                         </span>
                       </div>
                       {mod.details && (
@@ -414,7 +414,7 @@ export default function DiagnosticResultPage() {
                               type="button"
                               onClick={() => openChat(dtc.code)}
                               className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
-                              title={t("askAboutCode")}
+                              title={tr("askAboutCode")}
                             >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </button>
@@ -422,11 +422,11 @@ export default function DiagnosticResultPage() {
                             <p className="text-sm mt-1">{dtc.description}</p>
                             {mod.descriptions?.[dtc.code] && mod.descriptions[dtc.code] !== dtc.description && (
                               <p className="text-xs text-muted-foreground mt-0.5 italic">
-                                {t("report")} {mod.descriptions[dtc.code]}
+                                {tr("report")} {mod.descriptions[dtc.code]}
                               </p>
                             )}
                             <Badge variant="outline" className="mt-2 text-xs">
-                              {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                              {tr(`severity.${normalizeSeverity(dtc.severity)}`)}
                             </Badge>
                           </div>
                         ))}
@@ -439,13 +439,13 @@ export default function DiagnosticResultPage() {
                               type="button"
                               onClick={() => openChat(code)}
                               className="absolute top-2 right-2 opacity-0 group-hover/dtc:opacity-100 transition-opacity h-6 w-6 rounded-full bg-background/80 flex items-center justify-center hover:bg-background"
-                              title={t("askAboutCode")}
+                              title={tr("askAboutCode")}
                             >
                               <MessageCircle className="h-3.5 w-3.5" />
                             </button>
                             <p className="font-mono font-bold">{code}</p>
                             <p className="text-sm mt-1 text-muted-foreground">
-                              {mod.descriptions?.[code] || t("noDescription")}
+                              {mod.descriptions?.[code] || tr("noDescription")}
                             </p>
                           </div>
                         ))}
@@ -464,7 +464,7 @@ export default function DiagnosticResultPage() {
                   <div>
                     <div className="flex items-center gap-2 mb-2">
                       <Badge variant="outline" className="text-sm font-semibold">
-                        {t("others")}
+                        {tr("others")}
                       </Badge>
                     </div>
                     <div className="flex flex-wrap gap-3 ml-2">
@@ -490,7 +490,7 @@ export default function DiagnosticResultPage() {
                           <p className="font-mono font-bold">{dtc.code}</p>
                           <p className="text-sm mt-1">{dtc.description}</p>
                           <Badge variant="outline" className="mt-2 text-xs">
-                            {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                            {tr(`severity.${normalizeSeverity(dtc.severity)}`)}
                           </Badge>
                         </div>
                       ))}
@@ -515,7 +515,7 @@ export default function DiagnosticResultPage() {
                     <p className="font-mono font-bold">{dtc.code}</p>
                     <p className="text-sm mt-1">{dtc.description}</p>
                     <Badge variant="outline" className="mt-2 text-xs">
-                      {t(`severity.${normalizeSeverity(dtc.severity)}`)}
+                      {tr(`severity.${normalizeSeverity(dtc.severity)}`)}
                     </Badge>
                   </div>
                 ))}
@@ -526,7 +526,7 @@ export default function DiagnosticResultPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>{t("probableCauses")}</CardTitle>
+            <CardTitle>{tr("probableCauses")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             {analysis.probable_causes
@@ -588,7 +588,7 @@ export default function DiagnosticResultPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Wrench className="h-5 w-5 text-emerald-500" />
-              {t("solutions")}
+              {tr("solutions")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -606,7 +606,7 @@ export default function DiagnosticResultPage() {
                             : "destructive"
                         }
                       >
-                        {t(`difficulty.${normalizeDifficulty(sol.difficulty)}`)}
+                        {tr(`difficulty.${normalizeDifficulty(sol.difficulty)}`)}
                       </Badge>
                       <span>{sol.description}</span>
                     </div>
@@ -615,11 +615,11 @@ export default function DiagnosticResultPage() {
                     <div className="space-y-4 pt-2">
                       {sol.estimated_cost && (
                         <p className="text-sm">
-                          <strong>{t("estimatedCost")}:</strong> {sol.estimated_cost}
+                          <strong>{tr("estimatedCost")}:</strong> {sol.estimated_cost}
                         </p>
                       )}
                       <div>
-                        <p className="font-medium text-sm mb-2">{t("steps")}:</p>
+                        <p className="font-medium text-sm mb-2">{tr("steps")}:</p>
                         <ol className="space-y-2">
                           {sol.steps.map((step, j) => (
                             <li key={j} className="flex gap-3 text-sm">
@@ -662,10 +662,10 @@ export default function DiagnosticResultPage() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     <ClipboardCheck className="h-5 w-5 text-primary" />
-                    {t("tests")}
+                    {tr("tests")}
                   </CardTitle>
                   <CardDescription className="mt-1">
-                    {t("completeTests")}
+                    {tr("completeTests")}
                   </CardDescription>
                 </div>
                 {Object.keys(testResults).length > 0 && (
@@ -681,7 +681,7 @@ export default function DiagnosticResultPage() {
                     ) : (
                       <RefreshCw className="h-4 w-4" />
                     )}
-                    {t("reanalyze")}
+                    {tr("reanalyze")}
                   </Button>
                 )}
               </div>
@@ -708,7 +708,7 @@ export default function DiagnosticResultPage() {
                         {test.tools_needed?.length > 0 && (
                           <div>
                             <p className="text-sm font-medium mb-1">
-                              {t("toolsNeeded")}:
+                              {tr("toolsNeeded")}:
                             </p>
                             <div className="flex flex-wrap gap-1">
                               {test.tools_needed.map((tool, j) => (
@@ -733,18 +733,18 @@ export default function DiagnosticResultPage() {
 
                         <Alert>
                           <AlertDescription>
-                            <strong>{t("expectedResult")}:</strong> {test.expected_result}
+                            <strong>{tr("expectedResult")}:</strong> {test.expected_result}
                           </AlertDescription>
                         </Alert>
 
                         <div className="grid grid-cols-2 gap-2 text-sm">
                           <div className="p-2 rounded bg-emerald-500/10 text-emerald-600">
                             <CheckCircle2 className="inline h-3 w-3 mr-1" />
-                            {t("passImplication")} {test.pass_implication}
+                            {tr("passImplication")} {test.pass_implication}
                           </div>
                           <div className="p-2 rounded bg-red-500/10 text-red-600">
                             <XCircle className="inline h-3 w-3 mr-1" />
-                            {t("failImplication")} {test.fail_implication}
+                            {tr("failImplication")} {test.fail_implication}
                           </div>
                         </div>
 
@@ -752,7 +752,7 @@ export default function DiagnosticResultPage() {
 
                         <div className="flex gap-2">
                           <p className="text-sm font-medium self-center mr-2">
-                            {t("resultLabel")}
+                            {tr("resultLabel")}
                           </p>
                           {(["passed", "failed", "skipped"] as const).map((status) => (
                             <Button
@@ -768,7 +768,7 @@ export default function DiagnosticResultPage() {
                               className="gap-1"
                             >
                               {statusIcons[status]}
-                              {t(`testStatus.${status}`)}
+                              {tr(`testStatus.${status}`)}
                             </Button>
                           ))}
                         </div>
@@ -786,7 +786,7 @@ export default function DiagnosticResultPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <MessageSquare className="h-5 w-5 text-blue-500" />
-                {t("forumInsights")}
+                {tr("forumInsights")}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -829,9 +829,9 @@ export default function DiagnosticResultPage() {
                 <svg className="h-5 w-5 text-red-500" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
                 </svg>
-                {t("youtubeVideos")}
+                {tr("youtubeVideos")}
               </CardTitle>
-              <CardDescription>{t("youtubeDescription")}</CardDescription>
+              <CardDescription>{tr("youtubeDescription")}</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -865,7 +865,7 @@ export default function DiagnosticResultPage() {
                             <svg className="h-8 w-8" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M21.21 3.79a.996.996 0 0 0-1.09-.21C19.44 3.89 17.56 4.5 16 4.5c-2.46 0-4.54-1.56-6-3.12-.46-.46-1.26-.32-1.53.24C7.37 4.2 6 6.84 6 9.5c0 3.59 2.41 6.59 5.68 7.61A5.465 5.465 0 0 0 11 18.5v.5H9c-.55 0-1 .45-1 1s.45 1 1 1h6c.55 0 1-.45 1-1s-.45-1-1-1h-2v-.5c0-.49-.1-.96-.27-1.39C16.16 15.87 19 12.56 19 8.5c0-1.37-.29-2.67-.81-3.86.95-.34 1.95-.8 2.71-1.29.68-.44.69-1.37.31-1.56z"/>
                             </svg>
-                            <span className="text-xs">{t("searchYoutube")}</span>
+                            <span className="text-xs">{tr("searchYoutube")}</span>
                           </div>
                         )}
                         <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors pointer-events-none">
@@ -890,7 +890,7 @@ export default function DiagnosticResultPage() {
                         )}
                         {(thumbFailed || !videoId) && (
                             <p className="text-xs text-primary mt-1">
-                              {t("searchRealVideos")}
+                              {tr("searchRealVideos")}
                             </p>
                         )}
                       </div>
