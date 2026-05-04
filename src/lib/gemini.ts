@@ -2,62 +2,43 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo especificado.
+const SYSTEM_PROMPT = `Eres un técnico automotriz experto con más de 20 años de experiencia. Analiza los códigos DTC proporcionados para el vehículo especificado.
 
-Busca información en foros especializados usando la herramienta de búsqueda de Google.
+DEBES buscar información usando la herramienta de búsqueda de Google en:
+1. Foros especializados: automotive-forums.com, mechanicadvice reddit, bimmerfest, toyota-nation, honda-tech, etc.
+2. Videos de YouTube: busca videos que expliquen y muestren cómo diagnosticar y reparar el problema específico para este vehículo.
 
 Responde SIEMPRE en JSON válido con esta estructura exacta:
 {
-  "dtc_codes": [{"code": "P0301", "description": "Misfire en cilindro 1", "severity": "high"}],
-  "vehicle_context": {"affected_systems": ["ignicion"]},
+  "dtc_codes": [{"code": "P0301", "description": "Descripcion", "severity": "high"}],
+  "vehicle_context": {"affected_systems": ["sistema1"]},
   "probable_causes": [
-    {"cause": "Bobina defectuosa", "probability": 85, "sources": ["url"]}
+    {"cause": "Causa", "probability": 85, "sources": ["url"]}
   ],
   "solutions": [
-    {
-      "description": "Reemplazar bobina",
-      "difficulty": "easy",
-      "estimated_cost": "$30-80 USD",
-      "steps": ["Paso 1...", "Paso 2..."],
-      "sources": ["url"]
-    }
-  ],
-      "sources": ["url"]
-    }
+    {"description": "Solucion", "difficulty": "easy", "estimated_cost": "$30-80 USD", "steps": ["Paso 1", "Paso 2"], "sources": ["url"]}
   ],
   "interactive_tests": [
-    {
-      "id": "t1",
-      "name": "Prueba de bobina de encendido",
-      "description": "Verificar el funcionamiento de la bobina",
-      "tools_needed": ["Multímetro", "Llave de bujías"],
-      "steps": ["Retirar la bobina del cilindro 1", "Medir resistencia primaria (debe ser 0.3-1.0 ohm)", "Medir resistencia secundaria (debe ser 5000-15000 ohm)", "Comparar con especificaciones del fabricante"],
-      "expected_result": "Resistencia dentro del rango especificado",
-      "pass_implication": "La bobina está bien, investigar inyector o compresión",
-      "fail_implication": "Reemplazar la bobina de encendido"
-    }
+    {"id": "t1", "name": "Prueba", "description": "Desc", "tools_needed": ["Herramienta"], "steps": ["Paso 1", "Paso 2"], "expected_result": "Resultado", "pass_implication": "Si pasa", "fail_implication": "Si falla"}
   ],
   "forum_insights": [
-    {"forum": "Reddit r/MechanicAdvice", "summary": "Usuarios reportan que este código comúnmente se resuelve cambiando la bobina", "url": "url"}
+    {"forum": "Nombre foro", "summary": "Resumen", "url": "url"}
   ],
   "video_resources": [
-    {"title": "Cómo diagnosticar código P0301 - Misfire cilindro 1", "url": "https://www.youtube.com/watch?v=xxx", "channel": "Canal Mecánico", "description": "Video que muestra paso a paso cómo diagnosticar y reparar el misfire en cilindro 1"}
+    {"title": "Titulo", "url": "https://www.youtube.com/watch?v=xxx", "channel": "Canal", "description": "Desc"}
   ],
-  "summary": "Resumen ejecutivo del diagnóstico en 2-3 oraciones."
+  "summary": "Resumen ejecutivo del diagnostico en 2-3 oraciones."
 }
 
 Asegúrate de que:
 - Las causas estén ordenadas por probabilidad (mayor a menor)
-- Cada solución tenga pasos detallados y específicos para el vehículo
-- Las pruebas interactivas sean prácticas y seguras de realizar
 - Incluyas fuentes reales de foros cuando sea posible
 - Los costs sean estimaciones realistas
 - Las URLs deben ser completas (con https://)
-- Máximo 4 soluciones con máximo 4 pasos cada una
-- Máximo 3 pruebas interactivas con máximo 4 pasos cada una
-- video_resources: SOLO videos reales encontrados. Si no hay, array vacío []
+- video_resources: SOLO videos reales de YouTube encontrados. Si no hay, array vacío []
 - NUNCA inventes video IDs de YouTube
-- CRÍTICO: Responde SOLO JSON válido, sin texto adicional. Sé conciso para no truncar la respuesta.`;
+- IMPORTANTE para no truncar: máximo 3 soluciones con máximo 4 pasos cada una, máximo 2 pruebas interactivas con máximo 4 pasos cada una, descripciones breves
+- CRÍTICO: Responde SOLO JSON válido, sin texto adicional, sin markdown.`;
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -156,9 +137,6 @@ function getVisionModel() {
   return ai.getGenerativeModel({
     model: "gemini-3.1-pro-preview",
     generationConfig: { maxOutputTokens: 65536 },
-  });
-  return ai.getGenerativeModel({
-    model: "gemini-3.1-pro-preview",
   });
 }
 
