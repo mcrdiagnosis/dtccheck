@@ -148,31 +148,9 @@ export default function DiagnosticResultPage() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!diagnostic?.ai_analysis) {
-    return (
-      <div className="container mx-auto px-4 py-16 text-center">
-        <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-        <h2 className="text-xl font-semibold">Diagnóstico no encontrado</h2>
-        <Link href="/diagnose">
-          <Button className="mt-4">Nuevo diagnóstico</Button>
-        </Link>
-      </div>
-    );
-  }
-
-  const analysis = diagnostic.ai_analysis;
-
   const buildReportHtml = useCallback(() => {
+    const a = diagnostic?.ai_analysis;
     const v = diagnostic?.vehicle_info;
-    const a = analysis;
     if (!a) return "";
 
     const sevColor: Record<string, string> = { low: "#3b82f6", medium: "#eab308", high: "#f97316", critical: "#ef4444" };
@@ -249,7 +227,7 @@ export default function DiagnosticResultPage() {
         Generado por DTCCheck - ${new Date().toLocaleDateString()}
       </div>
     </div>`;
-  }, [diagnostic, analysis]);
+  }, [diagnostic]);
 
   const generatePdf = useCallback(async (action: "download" | "share" | "print") => {
     setGeneratingPdf(true);
@@ -258,6 +236,7 @@ export default function DiagnosticResultPage() {
       const v = diagnostic?.vehicle_info;
       const filename = `diagnostico-${v?.make || "vehiculo"}-${v?.model || ""}-${v?.year || ""}.pdf`.replace(/\s+/g, "-");
       const html = buildReportHtml();
+      if (!html) { setGeneratingPdf(false); return; }
 
       if (action === "print") {
         const printWin = window.open("", "_blank");
@@ -308,6 +287,28 @@ export default function DiagnosticResultPage() {
       setGeneratingPdf(false);
     }
   }, [diagnostic, buildReportHtml]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!diagnostic?.ai_analysis) {
+    return (
+      <div className="container mx-auto px-4 py-16 text-center">
+        <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-xl font-semibold">Diagnóstico no encontrado</h2>
+        <Link href="/diagnose">
+          <Button className="mt-4">Nuevo diagnóstico</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  const analysis = diagnostic.ai_analysis;
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-5xl">
