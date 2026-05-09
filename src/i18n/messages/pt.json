@@ -199,7 +199,8 @@
     "chatError": "Erro no chat",
     "sendError": "Erro ao enviar mensagem",
     "updateError": "Erro ao atualizar relatório",
-    "updateErrorFallback": "Erro ao atualizar relatório"
+    "updateErrorFallback": "Erro ao atualizar relatório",
+    "attachImage": "Anexar diagrama ou foto"
   },
   "authGate": {
     "title": "Resultado do diagnóstico",
@@ -336,11 +337,15 @@
     },
     "diagram": {
       "title": "Análise de diagrama",
-      "subtitle": "Diagrama elétrico analisado por IA",
+      "subtitle": "Envie um diagrama elétrico para uma análise mais precisa",
       "followPath": "Seguir circuito",
       "circuitFuses": "Fusíveis do circuito",
       "altImage": "Diagrama elétrico",
-      "pin": "Pino"
+      "pin": "Pino",
+      "upload": "Enviar foto do diagrama elétrico",
+      "uploadHint": "Do manual de serviço ou Service Box",
+      "selectFile": "Selecionar imagem",
+      "analyzing": "Analisando diagrama..."
     },
     "completeTests": "Complete estes testes para finalizar o diagnóstico",
     "resultLabel": "Resultado:",

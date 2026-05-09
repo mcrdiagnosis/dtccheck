@@ -14,9 +14,9 @@ function getGenAI() {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, vehicle_info, analysis, dtc_code, history, locale } = await request.json();
+    const { message, vehicle_info, analysis, dtc_code, history, locale, image_base64 } = await request.json();
 
-    if (!message) {
+    if (!message && !image_base64) {
       return NextResponse.json({ error: "Message required" }, { status: 400 });
     }
 
@@ -48,6 +48,10 @@ Estás ayudando a diagnosticar un ${vehicleStr}.`;
 Da información detallada sobre este código: qué significa, causas comunes, cómo diagnosticarlo, cómo repararlo, costo estimado, y si es urgente.`;
     }
 
+    if (image_base64) {
+      context += `\n\nEl usuario ha adjuntado una imagen. Analízala en el contexto del diagnóstico automotriz. Puede ser un diagrama eléctrico, una foto de un componente, un conector, etc. Describe lo que ves y cómo se relaciona con el problema.`;
+    }
+
     context += `\n\nResponde de forma clara y práctica. Usa bullets o pasos numerados cuando sea útil.`;
 
     const contents = [
@@ -57,8 +61,16 @@ Da información detallada sobre este código: qué significa, causas comunes, c�
         role: h.role === "assistant" ? "model" as const : "user" as const,
         parts: [{ text: h.content }],
       })),
-      { role: "user" as const, parts: [{ text: message }] },
     ];
+
+    const userParts: any[] = [];
+    if (image_base64) {
+      userParts.push({ inlineData: { mimeType: "image/jpeg", data: image_base64 } });
+    }
+    if (message) {
+      userParts.push({ text: message });
+    }
+    contents.push({ role: "user" as const, parts: userParts });
 
     const result = await model.generateContent({ contents });
     const response = result.response.text();

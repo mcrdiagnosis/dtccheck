@@ -32,7 +32,6 @@ import {
   Cpu,
   Zap,
   ArrowRight,
-  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Controller } from "react-hook-form";
@@ -74,8 +73,6 @@ export default function DiagnosePage() {
   const [dragActive, setDragActive] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [diagramImage, setDiagramImage] = useState<File | null>(null);
-  const [diagramPreview, setDiagramPreview] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const form = useForm<DiagnoseForm>({
@@ -193,21 +190,11 @@ export default function DiagnosePage() {
         setProgress(100);
         router.push(`/diagnose/${result.id}`);
       } else {
-        let res: Response;
-        if (diagramImage) {
-          const fd = new FormData();
-          fd.append("dtc_codes", JSON.stringify(payload.dtc_codes));
-          fd.append("vehicle_info", JSON.stringify(payload.vehicle_info));
-          fd.append("locale", locale);
-          fd.append("diagram", diagramImage);
-          res = await fetch("/api/diagnose/dtc", { method: "POST", body: fd });
-        } else {
-          res = await fetch("/api/diagnose/dtc", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload),
-          });
-        }
+        const res = await fetch("/api/diagnose/dtc", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
 
         if (!res.ok) throw new Error(t("analysisError"));
         const result = await res.json();
@@ -368,54 +355,6 @@ export default function DiagnosePage() {
         </Tabs>
 
         <Card className="mt-6 game-card animate-slide-up stagger-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ImageIcon className="h-5 w-5 text-primary" />
-              {t("diagramTitle")}
-            </CardTitle>
-            <CardDescription>{t("diagramSubtitle")}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {diagramImage ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 rounded-xl bg-primary/5 border border-primary/20">
-                  <img src={diagramPreview!} alt="Diagram" className="h-16 w-16 object-cover rounded-lg" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium">{t("diagramAttached")}</p>
-                    <p className="text-xs text-muted-foreground truncate">{diagramImage.name}</p>
-                  </div>
-                  <Button type="button" variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setDiagramImage(null); setDiagramPreview(null); }}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            ) : (
-              <label className="flex items-center gap-4 rounded-xl p-4 bg-muted/30 border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <ImageIcon className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">{t("diagramUpload")}</p>
-                  <p className="text-xs text-muted-foreground">{t("diagramUploadHint")}</p>
-                </div>
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) {
-                      setDiagramImage(file);
-                      setDiagramPreview(URL.createObjectURL(file));
-                    }
-                  }}
-                />
-              </label>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card className="mt-6 game-card animate-slide-up stagger-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Car className="h-5 w-5 text-primary" />

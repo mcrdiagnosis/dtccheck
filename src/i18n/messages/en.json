@@ -199,7 +199,8 @@
     "chatError": "Chat error",
     "sendError": "Error sending message",
     "updateError": "Error updating report",
-    "updateErrorFallback": "Error updating report"
+    "updateErrorFallback": "Error updating report",
+    "attachImage": "Attach diagram or photo"
   },
   "authGate": {
     "title": "Diagnosis result",
@@ -336,11 +337,15 @@
     },
     "diagram": {
       "title": "Diagram analysis",
-      "subtitle": "AI-analyzed wiring diagram",
+      "subtitle": "Upload a wiring diagram for a more precise analysis",
       "followPath": "Follow circuit",
       "circuitFuses": "Circuit fuses",
       "altImage": "Wiring diagram",
-      "pin": "Pin"
+      "pin": "Pin",
+      "upload": "Upload wiring diagram photo",
+      "uploadHint": "From the service manual or Service Box",
+      "selectFile": "Select image",
+      "analyzing": "Analyzing diagram..."
     },
     "completeTests": "Complete these tests to finish the diagnosis",
     "resultLabel": "Result:",

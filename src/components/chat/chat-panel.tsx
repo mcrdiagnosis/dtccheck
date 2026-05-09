@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { X, Send, Loader2, MessageCircle, Wrench, Plus, Trash2, MessageSquare, RefreshCw } from "lucide-react";
+import { X, Send, Loader2, MessageCircle, Wrench, Plus, Trash2, MessageSquare, RefreshCw, ImagePlus } from "lucide-react";
 import { toast } from "sonner";
 import {
   getConversations,
@@ -44,8 +44,10 @@ export function ChatPanel({
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [updatingReport, setUpdatingReport] = useState(false);
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const loadConversations = () => {
     setConversations(getConversations(diagnosticId));
@@ -117,11 +119,13 @@ export function ChatPanel({
 
   const send = async () => {
     const text = input.trim();
-    if (!text || loading || !activeId) return;
+    if ((!text && !pendingImage) || loading || !activeId) return;
 
-    const userMsg: ChatMessage = { role: "user", content: text };
+    const userMsg: ChatMessage = { role: "user", content: text || "📷", image_base64: pendingImage || undefined };
     setMessages((prev) => [...prev, userMsg]);
     setInput("");
+    const imageToSend = pendingImage;
+    setPendingImage(null);
     setLoading(true);
 
     try {
@@ -132,12 +136,13 @@ export function ChatPanel({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: text,
+          message: text || "Analiza esta imagen en el contexto del diagnóstico",
           vehicle_info: vehicleInfo,
           analysis,
           dtc_code: conv?.dtcCode || undefined,
           history: conv?.messages.slice(-10) || [],
           locale: document.documentElement.lang || "es",
+          image_base64: imageToSend || undefined,
         }),
       });
 
@@ -276,6 +281,13 @@ export function ChatPanel({
                     : "bg-muted rounded-bl-md"
                 }`}
               >
+                {msg.image_base64 && (
+                  <img
+                    src={`data:image/jpeg;base64,${msg.image_base64}`}
+                    alt=""
+                    className="max-w-full rounded-lg mb-2 max-h-36 object-cover"
+                  />
+                )}
                 {msg.content}
               </div>
             </div>
@@ -309,7 +321,49 @@ export function ChatPanel({
         )}
 
         <div className="p-4 border-t">
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+              const reader = new FileReader();
+              reader.onload = () => {
+                setPendingImage((reader.result as string).split(",")[1]);
+              };
+              reader.readAsDataURL(file);
+              e.target.value = "";
+            }}
+          />
+          {pendingImage && (
+            <div className="relative mb-2 inline-block">
+              <img
+                src={`data:image/jpeg;base64,${pendingImage}`}
+                alt=""
+                className="h-16 rounded-lg border"
+              />
+              <button
+                type="button"
+                onClick={() => setPendingImage(null)}
+                className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
           <div className="flex gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="flex-shrink-0"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={loading}
+              title={t("attachImage")}
+            >
+              <ImagePlus className="h-4 w-4" />
+            </Button>
             <Input
               ref={inputRef}
               value={input}
@@ -319,7 +373,7 @@ export function ChatPanel({
               disabled={loading}
               className="flex-1"
             />
-            <Button onClick={send} disabled={loading || !input.trim()} size="icon">
+            <Button onClick={send} disabled={loading || (!input.trim() && !pendingImage)} size="icon">
               <Send className="h-4 w-4" />
             </Button>
           </div>

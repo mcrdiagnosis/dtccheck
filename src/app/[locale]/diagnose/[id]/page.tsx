@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useParams } from "next/navigation";
 import {
@@ -37,6 +37,9 @@ import {
   Target,
   MapPin,
   Zap,
+  Image as ImageIcon,
+  Upload,
+  X,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
@@ -84,6 +87,8 @@ export default function DiagnosticResultPage() {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatDtcCode, setChatDtcCode] = useState<string | null>(null);
   const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [analyzingDiagram, setAnalyzingDiagram] = useState(false);
+  const diagramFileRef = useRef<HTMLInputElement>(null);
 
   const openChat = (dtcCode?: string) => {
     if (dtcCode) setChatDtcCode(dtcCode);
@@ -152,6 +157,48 @@ export default function DiagnosticResultPage() {
       setReanalyzing(false);
     }
   };
+
+  const handleDiagramUpload = async (file: File) => {
+    setAnalyzingDiagram(true);
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+      formData.append("dtc_codes", JSON.stringify(diagnostic?.ai_analysis?.dtc_codes?.map((c: any) => c.code) || []));
+      formData.append("vehicle_info", JSON.stringify(diagnostic?.vehicle_info || {}));
+      formData.append("locale", document.documentElement.lang || "es");
+
+      const res = await fetch("/api/diagnose/diagram", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) throw new Error("Error analyzing diagram");
+      const data = await res.json();
+
+      if (diagnostic) {
+        const base64 = await fileToBase64(file);
+        const updatedAnalysis = {
+          ...diagnostic.ai_analysis,
+          diagram_analysis: { ...data.analysis, image_base64: base64 },
+        };
+        const updatedDiagnostic = { ...diagnostic, ai_analysis: updatedAnalysis } as Diagnostic;
+        setDiagnostic(updatedDiagnostic);
+        saveDiagnosticLocal(updatedDiagnostic);
+      }
+    } catch (err) {
+      console.error("Diagram analysis error:", err);
+    } finally {
+      setAnalyzingDiagram(false);
+    }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve((reader.result as string).split(",")[1]);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   const buildReportHtml = useCallback(() => {
     const a = diagnostic?.ai_analysis;
@@ -555,24 +602,65 @@ export default function DiagnosticResultPage() {
           </CardContent>
         </Card>
 
-        {analysis.diagram_analysis && (
-          <Card className="game-card animate-slide-up stagger-3">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Zap className="h-5 w-5 text-amber-500" />
-                {tr("diagram.title")}
-              </CardTitle>
-              <CardDescription>{tr("diagram.subtitle")}</CardDescription>
-            </CardHeader>
-            <CardContent>
+        <Card className="game-card animate-slide-up stagger-3">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-amber-500" />
+              {tr("diagram.title")}
+            </CardTitle>
+            <CardDescription>{tr("diagram.subtitle")}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {analysis.diagram_analysis ? (
               <DiagramViewer
                 analysis={analysis.diagram_analysis}
                 imageBase64={analysis.diagram_analysis.image_base64}
                 imageUrl={analysis.diagram_image_url}
               />
-            </CardContent>
-          </Card>
-        )}
+            ) : (
+              <div className="space-y-3">
+                {analyzingDiagram ? (
+                  <div className="flex items-center justify-center gap-3 py-8">
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <span className="text-sm text-muted-foreground">{tr("diagram.analyzing")}</span>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      ref={diagramFileRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleDiagramUpload(file);
+                        e.target.value = "";
+                      }}
+                    />
+                    <label className="flex items-center gap-4 rounded-xl p-4 bg-muted/30 border-2 border-dashed border-muted-foreground/25 cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all">
+                      <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <ImageIcon className="h-6 w-6 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium">{tr("diagram.upload")}</p>
+                        <p className="text-xs text-muted-foreground">{tr("diagram.uploadHint")}</p>
+                      </div>
+                    </label>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-2"
+                      onClick={() => diagramFileRef.current?.click()}
+                    >
+                      <Upload className="h-3.5 w-3.5" />
+                      {tr("diagram.selectFile")}
+                    </Button>
+                  </>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <Card className="game-card animate-slide-up stagger-3">
           <CardHeader>
