@@ -336,7 +336,7 @@
       "in": "en"
     },
     "diagram": {
-      "title": "Análisis de diagrama",
+      "title": "Diagrama eléctrico",
       "subtitle": "Sube un diagrama eléctrico para un análisis más preciso",
       "followPath": "Seguir circuito",
       "circuitFuses": "Fusibles del circuito",
@@ -346,6 +346,33 @@
       "uploadHint": "Del manual de servicio o Service Box",
       "selectFile": "Seleccionar imagen",
       "analyzing": "Analizando diagrama..."
+    },
+    "references": {
+      "title": "Referencias del vehículo",
+      "subtitle": "Información técnica encontrada para tu vehículo",
+      "fuse_box": "Caja de fusibles",
+      "relay": "Relés",
+      "component_location": "Ubicación de componentes",
+      "wiring": "Diagrama eléctrico",
+      "manual": "Manual de servicio",
+      "other": "Otro",
+      "viewSource": "Ver fuente",
+      "found": "encontradas"
+    },
+    "tabs": {
+      "causes": "Causas",
+      "solutions": "Soluciones",
+      "tests": "Pruebas",
+      "diagram": "Diagrama",
+      "references": "Referencias",
+      "forums": "Foros",
+      "videos": "Videos"
+    },
+    "stats": {
+      "codes": "Códigos",
+      "causes": "Causas",
+      "tests": "Pruebas",
+      "severity": "Severidad"
     },
     "completeTests": "Realiza estas pruebas para completar el diagnóstico",
     "resultLabel": "Resultado:",

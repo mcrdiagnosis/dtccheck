@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis } from "@/types/diagnostic";
+import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis, VehicleReference } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
@@ -621,4 +621,161 @@ Responde en ${lang}. Responde SOLO JSON válido (sin markdown):
   }
 
   return null;
+}
+
+export async function searchDiagramOnline(
+  dtcCodes: string[],
+  vehicleInfo: VehicleInfo,
+  locale?: string
+): Promise<{ sources: { title: string; url: string; description: string }[] }> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 65536 },
+  });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
+  const codesStr = dtcCodes.join(", ");
+
+  const localeLangMap: Record<string, string> = { es: "español", en: "English", pt: "português" };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const prompt = `Busca diagramas eléctricos (wiring diagrams) para un ${vehicleStr} relacionados con los códigos DTC: ${codesStr}.
+
+Busca en foros, manuales de servicio online, Service Box, SEDRE, autoparts sites, YouTube con diagramas, etc.
+
+Responde en ${lang}. Responde SOLO JSON válido (sin markdown):
+{
+  "sources": [
+    {"title": "Título descriptivo", "url": "https://...", "description": "Breve descripción de lo que contiene"}
+  ]
+}
+
+Reglas:
+- SOLO URLs reales y verificables que encontraste en la búsqueda
+- Máximo 5 resultados
+- Prioriza diagramas eléctricos específicos del sistema afectado
+- Incluye fuentes variadas (foros, manuales, videos con diagramas)
+- Si no encontraste nada, devuelve sources vacío []`;
+
+  const result = await model.generateContent(prompt);
+  const text = result.response.text();
+
+  const parsed = safeJsonParse(text);
+  if (parsed?.sources) {
+    const candidate = (result as any).response?.candidates?.[0];
+    const groundingMeta = candidate?.groundingMetadata;
+    const groundingChunks = groundingMeta?.groundingChunks || groundingMeta?.searchEntryPoint?.renderedContent;
+
+    if (groundingChunks && Array.isArray(groundingChunks)) {
+      const extraUrls: { title: string; url: string; description: string }[] = [];
+      for (const chunk of groundingChunks) {
+        const web = chunk?.web;
+        if (web?.uri && !parsed.sources.some((s: any) => s.url === web.uri)) {
+          extraUrls.push({ title: web.title || web.uri, url: web.uri, description: "" });
+        }
+      }
+      parsed.sources = [...parsed.sources, ...extraUrls].slice(0, 8);
+    }
+
+    return parsed;
+  }
+
+  return { sources: [] };
+}
+
+export async function searchVehicleReferences(
+  dtcCodes: string[],
+  vehicleInfo: VehicleInfo,
+  locale?: string
+): Promise<VehicleReference[]> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 65536 },
+  });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
+  const codesStr = dtcCodes.join(", ");
+  const systems = dtcCodes.map(c => {
+    const code = c.toUpperCase();
+    if (code.startsWith("P0") || code.startsWith("P1") || code.startsWith("P2")) return "motor/inyección";
+    if (code.startsWith("P07") || code.startsWith("P08")) return "transmisión";
+    if (code.startsWith("C0") || code.startsWith("C1")) return "ABS/frenos";
+    if (code.startsWith("B0") || code.startsWith("B1")) return "carrocería/airbag";
+    if (code.startsWith("U")) return "red/CAN";
+    return "motor";
+  });
+
+  const localeLangMap: Record<string, string> = { es: "español", en: "English", pt: "português" };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const prompt = `Busca información técnica específica para un ${vehicleStr}. Códigos DTC: ${codesStr}. Sistemas afectados: ${[...new Set(systems)].join(", ")}.
+
+Busca específicamente:
+1. Cajas de fusibles (fuse box layout) - diagrama de fusibles con referencia y amperaje
+2. Cajas de relés - ubicación y referencia de relés relacionados
+3. Ubicación de componentes - dónde están los sensores/actuadores del sistema afectado
+4. Diagramas eléctricos - wiring diagrams del sistema
+
+Busca en sitios como: opinautos.com, auto-data.net, foro.mecanica.com, youtube.com, manualesdetodo.com, societam.com, service box oficiales, etc.
+
+Responde en ${lang}. Responde SOLO JSON válido (sin markdown):
+{
+  "references": [
+    {
+      "title": "Caja de fusibles motor Peugeot 207 2010",
+      "url": "https://...",
+      "description": "Diagrama completo de fusibles BM34 con referencias y amperajes",
+      "type": "fuse_box",
+      "source": "opinautos.com"
+    }
+  ]
+}
+
+Reglas:
+- type debe ser uno de: "fuse_box", "relay", "component_location", "wiring", "manual", "other"
+- SOLO URLs reales encontradas en la búsqueda, NO inventes URLs
+- source es el dominio del sitio (ej: "opinautos.com")
+- Máximo 10 resultados
+- Prioriza información específica del vehículo y sistema afectado
+- Incluye diferentes tipos de referencia (fusibles, relés, componentes, diagramas)
+- Si no encontraste nada, devuelve references vacío []`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const parsed = safeJsonParse(text);
+
+    if (parsed?.references?.length) {
+      const candidate = (result as any).response?.candidates?.[0];
+      const groundingMeta = candidate?.groundingMetadata;
+      const groundingChunks = groundingMeta?.groundingChunks || [];
+
+      if (groundingChunks && Array.isArray(groundingChunks)) {
+        const extra: VehicleReference[] = [];
+        for (const chunk of groundingChunks) {
+          const web = chunk?.web;
+          if (web?.uri && !parsed.references.some((r: any) => r.url === web.uri)) {
+            extra.push({
+              title: web.title || web.uri,
+              url: web.uri,
+              description: "",
+              type: "other",
+              source: web.uri.replace(/^https?:\/\/(www\.)?/, "").split("/")[0],
+            });
+          }
+        }
+        parsed.references = [...parsed.references, ...extra].slice(0, 12);
+      }
+
+      return parsed.references.filter((r: any) => r.url?.startsWith("http"));
+    }
+  } catch (e) {
+    console.error("searchVehicleReferences error:", e);
+  }
+
+  return [];
 }

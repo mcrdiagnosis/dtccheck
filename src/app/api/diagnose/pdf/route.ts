@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractVehicleInfo } from "@/lib/pdf-parser";
-import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources } from "@/lib/gemini";
+import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources, searchVehicleReferences } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
       aiAnalysis.video_resources = await validateVideoResources(
         aiAnalysis.video_resources, dtcCodes, mergedVehicle, locale
       );
+    }
+
+    console.log("Searching vehicle references...");
+    const refs = await searchVehicleReferences(dtcCodes, mergedVehicle, locale);
+    if (refs.length > 0) {
+      aiAnalysis.vehicle_references = refs;
     }
 
     const id = crypto.randomUUID();

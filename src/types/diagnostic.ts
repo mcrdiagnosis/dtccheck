@@ -107,6 +107,14 @@ export interface VideoResource {
   description: string;
 }
 
+export interface VehicleReference {
+  title: string;
+  url: string;
+  description: string;
+  type: "fuse_box" | "relay" | "component_location" | "wiring" | "manual" | "other";
+  source: string;
+}
+
 export interface AIAnalysis {
   dtc_codes: DTCCode[];
   vehicle_context: {
@@ -120,6 +128,7 @@ export interface AIAnalysis {
   summary: string;
   diagram_analysis?: DiagramAnalysis;
   diagram_image_url?: string;
+  vehicle_references?: VehicleReference[];
 }
 
 export interface Diagnostic {

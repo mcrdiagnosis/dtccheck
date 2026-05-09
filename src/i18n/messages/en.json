@@ -336,7 +336,7 @@
       "in": "in"
     },
     "diagram": {
-      "title": "Diagram analysis",
+      "title": "Wiring diagram",
       "subtitle": "Upload a wiring diagram for a more precise analysis",
       "followPath": "Follow circuit",
       "circuitFuses": "Circuit fuses",
@@ -346,6 +346,33 @@
       "uploadHint": "From the service manual or Service Box",
       "selectFile": "Select image",
       "analyzing": "Analyzing diagram..."
+    },
+    "references": {
+      "title": "Vehicle references",
+      "subtitle": "Technical information found for your vehicle",
+      "fuse_box": "Fuse box",
+      "relay": "Relays",
+      "component_location": "Component location",
+      "wiring": "Wiring diagram",
+      "manual": "Service manual",
+      "other": "Other",
+      "viewSource": "View source",
+      "found": "found"
+    },
+    "tabs": {
+      "causes": "Causes",
+      "solutions": "Solutions",
+      "tests": "Tests",
+      "diagram": "Diagram",
+      "references": "References",
+      "forums": "Forums",
+      "videos": "Videos"
+    },
+    "stats": {
+      "codes": "Codes",
+      "causes": "Causes",
+      "tests": "Tests",
+      "severity": "Severity"
     },
     "completeTests": "Complete these tests to finish the diagnosis",
     "resultLabel": "Result:",

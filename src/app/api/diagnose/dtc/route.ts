@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeDTCs, searchYouTubeVideos, validateVideoResources, analyzeDiagramImage } from "@/lib/gemini";
+import { analyzeDTCs, searchYouTubeVideos, validateVideoResources, analyzeDiagramImage, searchVehicleReferences } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -57,6 +57,12 @@ export async function POST(request: NextRequest) {
         diagramAnalysis.image_base64 = base64;
         aiAnalysis.diagram_analysis = diagramAnalysis;
       }
+    }
+
+    console.log("Searching vehicle references...");
+    const refs = await searchVehicleReferences(dtcArray, vehicle_info, locale);
+    if (refs.length > 0) {
+      aiAnalysis.vehicle_references = refs;
     }
 
     const id = crypto.randomUUID();
