@@ -262,6 +262,11 @@
     "analysisErrorFallback": "Erro ao analisar",
     "analyzingProgress": "Buscando em fóruns e analisando códigos...",
     "pdfPreview": "Pré-visualização do PDF",
+    "diagramTitle": "Diagrama elétrico (opcional)",
+    "diagramSubtitle": "Envie uma foto do diagrama do sistema para uma análise mais precisa",
+    "diagramUpload": "Enviar foto do diagrama elétrico",
+    "diagramUploadHint": "Do manual de serviço ou Service Box",
+    "diagramAttached": "Diagrama anexado",
     "modules": {
       "engine": "Motor (P0xxx)",
       "transmission": "Transmissão (P07xx)",
@@ -321,6 +326,22 @@
     "askAboutCode": "Perguntar sobre este código",
     "noDescription": "Sem descrição disponível",
     "others": "Outros",
+    "testPoints": {
+      "title": "Pontos de teste",
+      "component": "Componente:",
+      "expectedValue": "Valor esperado:",
+      "condition": "Condição:",
+      "checkFuse": "Verificar fusível",
+      "in": "em"
+    },
+    "diagram": {
+      "title": "Análise de diagrama",
+      "subtitle": "Diagrama elétrico analisado por IA",
+      "followPath": "Seguir circuito",
+      "circuitFuses": "Fusíveis do circuito",
+      "altImage": "Diagrama elétrico",
+      "pin": "Pino"
+    },
     "completeTests": "Complete estes testes para finalizar o diagnóstico",
     "resultLabel": "Resultado:",
     "youtubeVideos": "Vídeos do YouTube",

@@ -262,6 +262,11 @@
     "analysisErrorFallback": "Error analyzing",
     "analyzingProgress": "Searching forums and analyzing codes...",
     "pdfPreview": "PDF preview",
+    "diagramTitle": "Wiring diagram (optional)",
+    "diagramSubtitle": "Upload a photo of the system diagram for a more precise analysis",
+    "diagramUpload": "Upload wiring diagram photo",
+    "diagramUploadHint": "From the service manual or Service Box",
+    "diagramAttached": "Diagram attached",
     "modules": {
       "engine": "Engine (P0xxx)",
       "transmission": "Transmission (P07xx)",
@@ -321,6 +326,22 @@
     "askAboutCode": "Ask about this code",
     "noDescription": "No description available",
     "others": "Others",
+    "testPoints": {
+      "title": "Test points",
+      "component": "Component:",
+      "expectedValue": "Expected value:",
+      "condition": "Condition:",
+      "checkFuse": "Check fuse",
+      "in": "in"
+    },
+    "diagram": {
+      "title": "Diagram analysis",
+      "subtitle": "AI-analyzed wiring diagram",
+      "followPath": "Follow circuit",
+      "circuitFuses": "Circuit fuses",
+      "altImage": "Wiring diagram",
+      "pin": "Pin"
+    },
     "completeTests": "Complete these tests to finish the diagnosis",
     "resultLabel": "Result:",
     "youtubeVideos": "YouTube videos",

@@ -35,12 +35,15 @@ import {
   Share2,
   Printer,
   Target,
+  MapPin,
+  Zap,
 } from "lucide-react";
 import { Link } from "@/i18n/routing";
 import type { Diagnostic, TestResult } from "@/types/diagnostic";
 import { getDiagnosticLocal, saveDiagnosticLocal } from "@/lib/local-storage";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { AuthGate } from "@/components/auth/auth-gate";
+import { DiagramViewer } from "@/components/diagram/diagram-viewer";
 
 const severityMap: Record<string, string> = {
   low: "low", medium: "medium", high: "high", critical: "critical",
@@ -552,6 +555,25 @@ export default function DiagnosticResultPage() {
           </CardContent>
         </Card>
 
+        {analysis.diagram_analysis && (
+          <Card className="game-card animate-slide-up stagger-3">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-amber-500" />
+                {tr("diagram.title")}
+              </CardTitle>
+              <CardDescription>{tr("diagram.subtitle")}</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DiagramViewer
+                analysis={analysis.diagram_analysis}
+                imageBase64={analysis.diagram_analysis.image_base64}
+                imageUrl={analysis.diagram_image_url}
+              />
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="game-card animate-slide-up stagger-3">
           <CardHeader>
             <CardTitle>{tr("probableCauses")}</CardTitle>
@@ -758,6 +780,57 @@ export default function DiagnosticResultPage() {
                             </li>
                           ))}
                         </ol>
+
+                        {test.test_points && test.test_points.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-sm font-medium flex items-center gap-1.5">
+                              <MapPin className="h-3.5 w-3.5 text-primary" />
+                              {tr("testPoints.title")}
+                            </p>
+                            {test.test_points.map((tp, j) => (
+                              <div key={j} className="rounded-lg border border-border/50 bg-muted/30 p-3 space-y-1.5 text-sm">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Badge variant="outline" className="font-mono text-xs">
+                                    {tp.connector} pin {tp.pin}
+                                  </Badge>
+                                  {tp.wire_color && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      {tp.wire_color}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-xs">
+                                  <span className="font-medium">{tr("testPoints.component")}</span> {tp.component}
+                                </p>
+                                <p className="text-xs">
+                                  <span className="font-medium">{tr("testPoints.expectedValue")}</span> <span className="text-primary font-medium">{tp.expected_value}</span>
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  <span className="font-medium">{tr("testPoints.condition")}</span> {tp.condition}
+                                </p>
+                                {tp.fuse_to_check && (
+                                  <div className="flex items-center gap-1.5 text-xs mt-1 p-1.5 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400">
+                                    <Zap className="h-3 w-3" />
+                                    <span>{tr("testPoints.checkFuse")} <strong>{tp.fuse_to_check.reference}</strong> ({tp.fuse_to_check.amperage}) {tr("testPoints.in")} {tp.fuse_to_check.location}</span>
+                                  </div>
+                                )}
+                                {tp.component_location && (
+                                  <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                    <MapPin className="h-3 w-3" />
+                                    {tp.component_location}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {test.component_location && (!test.test_points || test.test_points.length === 0) && (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MapPin className="h-3 w-3" />
+                            {test.component_location}
+                          </p>
+                        )}
 
                         <Alert>
                           <AlertDescription>

@@ -37,6 +37,61 @@ export interface InteractiveTest {
   expected_result: string;
   pass_implication: string;
   fail_implication: string;
+  test_points?: TestPoint[];
+  component_location?: string;
+}
+
+export interface TestPoint {
+  component: string;
+  connector: string;
+  pin: number | string;
+  wire_color: string;
+  expected_value: string;
+  condition: string;
+  fuse_to_check?: {
+    reference: string;
+    amperage: string;
+    location: string;
+  };
+  component_location?: string;
+}
+
+export interface DiagramAnnotation {
+  x: number;
+  y: number;
+  label: string;
+  type: "component" | "fuse" | "connector" | "ground" | "sensor" | "actuator" | "ecu" | "relay";
+  details?: string;
+  pin?: string;
+  wire_color?: string;
+}
+
+export interface DiagramAnalysis {
+  image_url?: string;
+  image_base64?: string;
+  components_identified: {
+    name: string;
+    type: string;
+    reference: string;
+    location: string;
+    connector?: string;
+    pins?: { number: number | string; color: string; function: string }[];
+  }[];
+  wires_highlighted: {
+    from: string;
+    to: string;
+    color: string;
+    function: string;
+  }[];
+  fuses: {
+    reference: string;
+    amperage: string;
+    location: string;
+    protects: string[];
+  }[];
+  path_to_follow: string[];
+  annotations: DiagramAnnotation[];
+  summary: string;
 }
 
 export interface ForumInsight {
@@ -63,6 +118,8 @@ export interface AIAnalysis {
   forum_insights: ForumInsight[];
   video_resources: VideoResource[];
   summary: string;
+  diagram_analysis?: DiagramAnalysis;
+  diagram_image_url?: string;
 }
 
 export interface Diagnostic {

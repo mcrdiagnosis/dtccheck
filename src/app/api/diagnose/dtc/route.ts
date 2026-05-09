@@ -1,11 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeDTCs, searchYouTubeVideos, validateVideoResources } from "@/lib/gemini";
+import { analyzeDTCs, searchYouTubeVideos, validateVideoResources, analyzeDiagramImage } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { dtc_codes, vehicle_info, locale } = body;
+    const contentType = request.headers.get("content-type") || "";
+    let dtc_codes: string[], vehicle_info: any, locale: string, diagramFile: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const formData = await request.formData();
+      dtc_codes = JSON.parse(formData.get("dtc_codes") as string || "[]");
+      vehicle_info = JSON.parse(formData.get("vehicle_info") as string || "{}");
+      locale = (formData.get("locale") as string) || "es";
+      diagramFile = formData.get("diagram") as File | null;
+    } else {
+      const body = await request.json();
+      dtc_codes = body.dtc_codes;
+      vehicle_info = body.vehicle_info;
+      locale = body.locale;
+    }
 
     if (!dtc_codes?.length || !vehicle_info?.make || !vehicle_info?.model) {
       return NextResponse.json(
@@ -14,9 +27,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const dtcArray = Array.isArray(dtc_codes)
+    const dtcArray: string[] = Array.isArray(dtc_codes)
       ? dtc_codes
-      : dtc_codes.split(",").map((c: string) => c.trim().toUpperCase());
+      : (dtc_codes as unknown as string).split(",").map((c: string) => c.trim().toUpperCase());
 
     const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale);
 
@@ -32,6 +45,18 @@ export async function POST(request: NextRequest) {
       aiAnalysis.video_resources = await validateVideoResources(
         aiAnalysis.video_resources, dtcArray, vehicle_info, locale
       );
+    }
+
+    if (diagramFile) {
+      console.log("Diagram image provided, analyzing...");
+      const mimeType = diagramFile.type || "image/jpeg";
+      const buffer = Buffer.from(await diagramFile.arrayBuffer());
+      const base64 = buffer.toString("base64");
+      const diagramAnalysis = await analyzeDiagramImage(base64, mimeType, dtcArray, vehicle_info, locale);
+      if (diagramAnalysis) {
+        diagramAnalysis.image_base64 = base64;
+        aiAnalysis.diagram_analysis = diagramAnalysis;
+      }
     }
 
     const id = crypto.randomUUID();

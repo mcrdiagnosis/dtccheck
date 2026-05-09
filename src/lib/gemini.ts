@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AIAnalysis, VehicleInfo, VideoResource } from "@/types/diagnostic";
+import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
@@ -21,7 +21,29 @@ Responde SOLO JSON válido (sin markdown, sin texto extra):
     {"description": "Solucion", "difficulty": "easy", "estimated_cost": "$30", "steps": ["Paso1", "Paso2"], "sources": ["url"]}
   ],
   "interactive_tests": [
-    {"id": "t1", "name": "Prueba", "description": "Desc", "tools_needed": ["Tool"], "steps": ["P1", "P2"], "expected_result": "Esperado", "pass_implication": "Si pasa", "fail_implication": "Si falla"}
+    {
+      "id": "t1",
+      "name": "Prueba",
+      "description": "Desc",
+      "tools_needed": ["Multimetro"],
+      "steps": ["Paso1", "Paso2"],
+      "expected_result": "Esperado",
+      "pass_implication": "Si pasa",
+      "fail_implication": "Si falla",
+      "test_points": [
+        {
+          "component": "Sensor ABS trasero izquierdo",
+          "connector": "C124",
+          "pin": 3,
+          "wire_color": "Verde/NR",
+          "expected_value": "0.5-1.5V AC con rueda girando",
+          "condition": "Ignition ON, rueda girando manualmente",
+          "fuse_to_check": {"reference": "F15", "amperage": "15A", "location": "BM34 caja motor"},
+          "component_location": "Cubo rueda trasera izquierda"
+        }
+      ],
+      "component_location": "Ubicacion fisica del componente principal"
+    }
   ],
   "forum_insights": [
     {"forum": "Foro", "summary": "Resumen", "url": "url"}
@@ -34,7 +56,10 @@ Reglas:
 - Max 3 causas, 2 soluciones con max 4 pasos, 2 pruebas con max 4 pasos
 - video_resources: busca videos REALES de YouTube. SOLO IDs reales (11 chars). Si no encontraste, array vacio []
 - URLs completas con https://
-- Sé CONCISO`;
+- Sé CONCISO
+- test_points: PARA CADA prueba interactiva, incluye 1-3 puntos de prueba físicos con: conector, pin, color de cable, valor esperado, condicion de medicion, fusible a verificar si aplica, y ubicacion del componente
+- Colores de cable PSA: BV=blanco, NR=negro, RG=rojo, VE=verde, BJ=beige, GR=gris, MR=marron, OR=naranja, VI=violeta, BI=azul, JN=amarillo
+- Si es PSA/Peugeot/Citroen usa referencias: BSI1, BM34, BSM, 0004, etc.`;
 
 let genAI: GoogleGenerativeAI | null = null;
 
@@ -518,4 +543,82 @@ export async function validateVideoResources(
       }
       return v;
     }) as VideoResource[];
+}
+
+export async function analyzeDiagramImage(
+  imageBase64: string,
+  mimeType: string,
+  dtcCodes: string[],
+  vehicleInfo: VehicleInfo,
+  locale?: string
+): Promise<DiagramAnalysis | null> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
+  const codesStr = dtcCodes.join(", ");
+
+  const localeLangMap: Record<string, string> = { es: "español", en: "English", pt: "português" };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const prompt = `Eres un técnico automotriz experto en diagramas eléctricos. Analiza esta imagen de un diagrama eléctrico/wiring diagram para un ${vehicleStr}.
+
+Códigos DTC relacionados: ${codesStr}
+
+INSTRUCCIONES:
+1. Identifica TODOS los componentes visibles en el diagrama (sensores, actuadores, ECU, relés, fusibles, conectores, tierras)
+2. Para cada componente, identifica sus conectores y pines si son visibles
+3. Identifica los cables visibles con sus colores
+4. Identifica fusibles con su referencia, amperaje y ubicación
+5. Determina el camino/circuito que debe seguirse para diagnosticar los códigos DTC indicados
+6. Genera anotaciones con coordenadas relativas (0.0 a 1.0) para cada elemento identificado en la imagen
+
+Colores de cable PSA/Stellantis: BV=blanco, NR=negro, RG=rojo, VE=verde, BJ=beige, GR=gris, MR=marrón, OR=naranja, VI=violeta, BI=azul, JN=amarillo
+Referencias PSA comunes: BSI1=unidad servicio inteligente, BM34=caja fusibles motor, BSM=caja servicio motor, 0004=emisor llave
+
+Responde en ${lang}. Responde SOLO JSON válido (sin markdown):
+{
+  "summary": "Resumen del diagrama y circuito relevante",
+  "components_identified": [
+    {
+      "name": "Nombre del componente",
+      "type": "sensor|actuator|ecu|fuse|relay|connector|ground",
+      "reference": "Referencia (ej: C124, BSI1, F15)",
+      "location": "Ubicación en el vehículo",
+      "connector": "Referencia del conector si aplica",
+      "pins": [{"number": 1, "color": "Verde", "function": "Señal"}]
+    }
+  ],
+  "wires_highlighted": [
+    {"from": "Componente origen", "to": "Componente destino", "color": "Color del cable", "function": "Función"}
+  ],
+  "fuses": [
+    {"reference": "F15", "amperage": "15A", "location": "BM34 caja motor", "protects": ["Sensor ABS trasero izquierdo"]}
+  ],
+  "path_to_follow": ["Referencia componente 1", "Referencia componente 2"],
+  "annotations": [
+    {"x": 0.35, "y": 0.22, "label": "Fusible F15", "type": "fuse", "details": "15A protege circuito ABS"}
+  ]
+}`;
+
+  const imagePart = {
+    inlineData: { mimeType, data: imageBase64 },
+  };
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const result = await model.generateContent([prompt, imagePart]);
+      const text = result.response.text();
+      console.log("analyzeDiagram attempt", attempt + 1, "len:", text.length);
+
+      const parsed = safeJsonParse(text);
+      if (parsed && parsed.components_identified) {
+        return parsed as DiagramAnalysis;
+      }
+    } catch (e) {
+      console.error("analyzeDiagram error:", e);
+    }
+  }
+
+  return null;
 }
