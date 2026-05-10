@@ -272,12 +272,26 @@ export function FuseBoxViewer({ box }: FuseBoxViewerProps) {
     );
   };
 
+  const [imgSrc, setImgSrc] = useState<string | null>(null);
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    if (diagramImageUrl) {
+      setImgError(false);
+      setImgSrc(`/api/proxy/image?url=${encodeURIComponent(diagramImageUrl)}`);
+    }
+  }, [diagramImageUrl]);
+
   const renderImageOverlay = () => {
     if (!diagramImageUrl) return null;
-    const proxyUrl = `/api/proxy/image?url=${encodeURIComponent(diagramImageUrl)}`;
+    if (imgError && !imgSrc?.startsWith("http")) {
+      setImgSrc(diagramImageUrl);
+      return null;
+    }
+    if (!imgSrc) return null;
     return (
       <div className="relative w-full rounded-lg overflow-hidden border border-border/50 bg-black">
-        <img src={proxyUrl} alt={box.name} className="w-full max-h-[350px] object-contain" />
+        <img src={imgSrc} alt={box.name} className="w-full max-h-[350px] object-contain" crossOrigin="anonymous" referrerPolicy="no-referrer" onError={() => { if (!imgError) { setImgError(true); setImgSrc(diagramImageUrl); } }} />
         <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${svgW} ${svgH}`} preserveAspectRatio="xMidYMid meet">
           {Array.from(posMap.entries()).map(([key, fuse]) => {
             const c = getAmp(fuse.amperage);
