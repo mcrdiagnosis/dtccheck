@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractVehicleInfo } from "@/lib/pdf-parser";
 import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources, searchVehicleReferences, generateVehicleTechnicalData, fetchExternalFuseDiagrams } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
+import { getServerAIConfig } from "@/lib/ai-provider";
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const pdfFile = formData.get("pdf") as File;
     const vehicleInfoStr = formData.get("vehicle_info") as string;
+    const aiConfigStr = formData.get("ai_config") as string;
+    let aiConfigParsed: Record<string, string> = {};
+    if (aiConfigStr) { try { aiConfigParsed = JSON.parse(aiConfigStr); } catch {} }
+
+    const aiProviderConfig = getServerAIConfig(aiConfigParsed);
 
     if (!pdfFile) {
       return NextResponse.json({ error: "No PDF file" }, { status: 400 });
@@ -43,7 +49,8 @@ export async function POST(request: NextRequest) {
       ? `\n\nEl escáner reportó códigos agrupados por módulo: ${visionModules.map(m => `${m.module}: ${m.codes.join(", ")}`).join("; ")}.\nAnaliza TODOS los módulos.`
       : "";
 
-    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText + moduleContext, locale);
+    console.log(`Using AI provider: ${aiProviderConfig.provider}`);
+    const aiAnalysis = await analyzeDTCs(dtcCodes, mergedVehicle, rawText + moduleContext, locale, aiProviderConfig);
 
     if (!aiAnalysis.video_resources || aiAnalysis.video_resources.length === 0) {
       console.log("No videos in analysis, searching YouTube...");

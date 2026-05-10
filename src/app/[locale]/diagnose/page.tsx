@@ -6,6 +6,7 @@ import { useRouter } from "@/i18n/routing";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { getAIConfig } from "@/lib/ai-provider";
 import { saveDiagnosticLocal } from "@/lib/local-storage";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -169,11 +170,15 @@ export default function DiagnosePage() {
         },
       };
 
+      const aiConfig = getAIConfig();
+      const aiConfigPayload = { provider: aiConfig.provider, zaiKey: aiConfig.zaiKey, zaiBaseUrl: aiConfig.zaiBaseUrl, zaiModel: aiConfig.zaiModel, geminiKey: aiConfig.geminiKey };
+
       if (activeTab === "pdf" && pdfFile) {
         const formData = new FormData();
         formData.append("pdf", pdfFile);
         formData.append("vehicle_info", JSON.stringify(payload.vehicle_info));
         formData.append("locale", locale);
+        formData.append("ai_config", JSON.stringify(aiConfigPayload));
 
         const res = await fetch("/api/diagnose/pdf", {
           method: "POST",
@@ -193,7 +198,7 @@ export default function DiagnosePage() {
         const res = await fetch("/api/diagnose/dtc", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify({ ...payload, ai_config: aiConfigPayload }),
         });
 
         if (!res.ok) throw new Error(t("analysisError"));

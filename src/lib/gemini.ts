@@ -2,6 +2,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis, VehicleReference, FuseBox, RelayInfo, ComponentLocation } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 import { scrapeFuseImages } from "@/lib/fuse-scraper";
+import { generateWithProvider, type AIProviderConfig } from "@/lib/ai-provider";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
 
@@ -135,9 +136,39 @@ export function safeJsonParse(raw: string): any {
   return null;
 }
 
-function getGenAI() {
-  if (!genAI) {
-    const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
+let _currentAIConfig: AIProviderConfig | null = null;
+
+export function setAIConfig(config: AIProviderConfig) {
+  _currentAIConfig = config;
+}
+
+function getAIConf(): AIProviderConfig {
+  return _currentAIConfig || { provider: "gemini", geminiKey: "", zaiKey: "", zaiBaseUrl: "", zaiModel: "" };
+}
+
+async function aiGenerate(prompt: string, options?: { systemPrompt?: string; maxTokens?: number; imageBase64?: string; imageMimeType?: string }): Promise<string> {
+  const config = getAIConf();
+  if (config.provider === "zai" && config.zaiKey) {
+    return generateWithProvider(config, { prompt, ...options });
+  }
+  const ai = getGenAI(config.geminiKey);
+  const modelConfig: any = {
+    model: "gemini-2.5-flash",
+    generationConfig: { maxOutputTokens: options?.maxTokens || 65536 },
+  };
+  if (options?.systemPrompt) modelConfig.systemInstruction = options.systemPrompt;
+  const model = ai.getGenerativeModel(modelConfig);
+  const parts: any[] = [{ text: prompt }];
+  if (options?.imageBase64) {
+    parts.push({ inlineData: { mimeType: options.imageMimeType || "image/png", data: options.imageBase64 } });
+  }
+  const result = await model.generateContent(parts);
+  return result.response.text();
+}
+
+function getGenAI(overrideKey?: string) {
+  if (!genAI || overrideKey) {
+    const apiKey = overrideKey || process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) throw new Error("GOOGLE_GEMINI_API_KEY is not configured");
     genAI = new GoogleGenerativeAI(apiKey);
   }
@@ -248,8 +279,10 @@ export async function analyzeDTCs(
   dtcCodes: string[],
   vehicleInfo: VehicleInfo,
   rawText?: string,
-  locale?: string
+  locale?: string,
+  aiConfig?: AIProviderConfig
 ): Promise<AIAnalysis> {
+  if (aiConfig) setAIConfig(aiConfig);
   const model = getModel();
 
   const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();

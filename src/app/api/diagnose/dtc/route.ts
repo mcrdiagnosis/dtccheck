@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeDTCs, searchYouTubeVideos, validateVideoResources, analyzeDiagramImage, searchVehicleReferences, generateVehicleTechnicalData, fetchExternalFuseDiagrams } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
+import { getServerAIConfig } from "@/lib/ai-provider";
 
 export async function POST(request: NextRequest) {
   try {
     const contentType = request.headers.get("content-type") || "";
     let dtc_codes: string[], vehicle_info: any, locale: string, diagramFile: File | null = null;
+    let aiConfig: Record<string, string> = {};
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData();
@@ -13,12 +15,17 @@ export async function POST(request: NextRequest) {
       vehicle_info = JSON.parse(formData.get("vehicle_info") as string || "{}");
       locale = (formData.get("locale") as string) || "es";
       diagramFile = formData.get("diagram") as File | null;
+      const aiConfigStr = formData.get("ai_config") as string;
+      if (aiConfigStr) { try { aiConfig = JSON.parse(aiConfigStr); } catch {} }
     } else {
       const body = await request.json();
       dtc_codes = body.dtc_codes;
       vehicle_info = body.vehicle_info;
       locale = body.locale;
+      aiConfig = body.ai_config || {};
     }
+
+    const aiProviderConfig = getServerAIConfig(aiConfig);
 
     if (!dtc_codes?.length || !vehicle_info?.make || !vehicle_info?.model) {
       return NextResponse.json(
@@ -31,7 +38,8 @@ export async function POST(request: NextRequest) {
       ? dtc_codes
       : (dtc_codes as unknown as string).split(",").map((c: string) => c.trim().toUpperCase());
 
-    const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale);
+    console.log(`Using AI provider: ${aiProviderConfig.provider}`);
+    const aiAnalysis = await analyzeDTCs(dtcArray, vehicle_info, undefined, locale, aiProviderConfig);
 
     if (!aiAnalysis.video_resources || aiAnalysis.video_resources.length === 0) {
       console.log("No videos in analysis, searching YouTube...");

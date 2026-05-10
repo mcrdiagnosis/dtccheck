@@ -435,6 +435,15 @@
   "settings": {
     "profile": "Perfil",
     "currentPlan": "Plan actual",
-    "changePlan": "Cambiar plan"
+    "changePlan": "Cambiar plan",
+    "aiProvider": "Proveedor de IA",
+    "aiProviderDesc": "Selecciona el motor de inteligencia artificial para el diagnóstico",
+    "geminiKey": "API Key de Google Gemini",
+    "geminiKeyHint": "Se usa la key del servidor por defecto. Solo completa si quieres usar tu propia key.",
+    "zaiKey": "API Key de Z.ai / GLM",
+    "zaiBaseUrl": "URL base de la API",
+    "zaiModel": "Modelo",
+    "save": "Guardar",
+    "saved": "Guardado ✓"
   }
 }
