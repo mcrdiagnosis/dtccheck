@@ -851,19 +851,43 @@ export async function fetchExternalFuseDiagrams(
   const makeSlug = vehicleInfo.make.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const modelSlug = vehicleInfo.model.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
+  let scrapedImages: string[] = [];
+  try {
+    const scrapeUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/fuses/scrape?make=${encodeURIComponent(vehicleInfo.make)}&model=${encodeURIComponent(vehicleInfo.model)}&year=${vehicleInfo.year || ""}`;
+    const scrapeRes = await fetch(scrapeUrl, { signal: AbortSignal.timeout(12000) });
+    if (scrapeRes.ok) {
+      const scrapeData = await scrapeRes.json();
+      scrapedImages = scrapeData.images || [];
+      console.log(`Scraped ${scrapedImages.length} fuse box images from ${scrapeData.source}`);
+    }
+  } catch (e) {
+    console.error("Fuse scrape error:", e);
+  }
+
   if (existingFuseBoxes.length > 0) {
     const hasDiagrams = existingFuseBoxes.some((b) => b.diagram_url || b.image_url);
+    if (!hasDiagrams && scrapedImages.length > 0) {
+      const updated = [...existingFuseBoxes];
+      updated.forEach((box, i) => {
+        if (i < scrapedImages.length) {
+          updated[i] = { ...updated[i], diagram_url: scrapedImages[i] };
+        }
+      });
+      return updated;
+    }
     if (hasDiagrams) return existingFuseBoxes;
 
     const boxNames = existingFuseBoxes.map((b) => b.name).join(", ");
     const prompt = `Busca imágenes de diagramas de fusibles para un ${vehicleStr}.
-Busca en: opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}, fuse-box.info, autofusebox.info
+Busca en: opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
+Las imágenes están en images.opinautos.com (dominio de imágenes de opinautos).
+NO uses fuse-box.info - sus URLs son inválidas.
 
 Cajas encontradas: ${boxNames}
 
 Responde SOLO JSON:
-{"diagrams":[{"box_index":0,"diagram_url":"https://...","image_url":"https://...","source":"opinautos.com"}]}
-Si no encuentras, no la incluyas. No inventes URLs.`;
+{"diagrams":[{"box_index":0,"diagram_url":"https://images.opinautos.com/..."}]}
+Solo URLs de images.opinautos.com verificadas. No inventes URLs.`;
 
     try {
       const result = await model.generateContent(prompt);
@@ -872,9 +896,8 @@ Si no encuentras, no la incluyas. No inventes URLs.`;
         const updated = [...existingFuseBoxes];
         for (const d of parsed.diagrams) {
           const idx = d.box_index ?? 0;
-          if (idx >= 0 && idx < updated.length) {
-            if (d.diagram_url && !updated[idx].diagram_url) updated[idx] = { ...updated[idx], diagram_url: d.diagram_url };
-            if (d.image_url && !updated[idx].image_url) updated[idx] = { ...updated[idx], image_url: d.image_url };
+          if (idx >= 0 && idx < updated.length && d.diagram_url) {
+            updated[idx] = { ...updated[idx], diagram_url: d.diagram_url };
           }
         }
         return updated;
@@ -885,14 +908,15 @@ Si no encuentras, no la incluyas. No inventes URLs.`;
     return existingFuseBoxes;
   }
 
+  const imagesHint = scrapedImages.length > 0
+    ? `\n\nIMÁGENES ENCONTRADAS (asigna a cada caja su imagen correspondiente):\n${scrapedImages.map((u, i) => `  [${i}]: ${u}`).join("\n")}`
+    : "";
+
   const prompt = `Busca el diagrama completo de fusibles para un ${vehicleStr}.
-Busca en estos sitios:
-- https://www.opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
-- https://fuse-box.info/${makeSlug}/${modelSlug}
-- https://autofusebox.info
+Busca en: https://www.opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
+${imagesHint}
 
 Extrae TODOS los fusibles de TODAS las cajas de fusibles (motor, habitáculo, baúl).
-También busca las URLs de las imágenes/diagramas reales de cada caja.
 
 Responde SOLO JSON válido (sin markdown):
 {
@@ -903,11 +927,10 @@ Responde SOLO JSON válido (sin markdown):
       "reference": "BSI1",
       "grid": {"rows": 3, "cols": 5},
       "fuses": [
-        {"number": "F4", "amperage": "20A", "circuit": "Pantalla multifunción - Radio - Controles volante", "color": "amarillo", "protected_component": "Pantalla y radio", "type": "MINI", "position": {"row": 1, "col": 1}, "icon": "radio"},
-        {"number": "F5", "amperage": "15A", "circuit": "Caja de cambios automática", "color": "azul", "protected_component": "Caja automática", "type": "MINI", "position": {"row": 1, "col": 2}, "icon": "engine"}
+        {"number": "F4", "amperage": "20A", "circuit": "Pantalla multifunción - Radio", "color": "amarillo", "protected_component": "Pantalla y radio", "type": "MINI", "position": {"row": 1, "col": 1}, "icon": "radio"}
       ],
       "diagram_url": "https://images.opinautos.com/...",
-      "image_url": "https://images.opinautos.com/..."
+      "image_url": ""
     }
   ]
 }
@@ -917,10 +940,10 @@ REGLAS:
 - type: "MINI", "ATO", "ATO_SHUNT", "MAXI", "JCASE"
 - icon: "radio", "light", "engine", "window", "airbag", "ac", "brake", "wiper", "lock", "horn", "fuel", "abs", "other"
 - position: row/col empiezan en 1, refleja la disposición FÍSICA real
-- diagram_url: URL de la imagen del diagrama interactivo si la encuentras
-- image_url: URL de la foto de la caja real si la encuentras
+- diagram_url: usa las URLs de images.opinautos.com proporcionadas arriba. Si no hay, déjalo vacío.
+- image_url: déjalo vacío
 - Sé EXHAUSTIVO - lista TODOS los fusibles de TODAS las cajas
-- Busca especialmente en opinautos.com que tiene diagramas interactivos completos`;
+- NO inventes URLs de imágenes - solo usa las proporcionadas o déjalo vacío`;
 
   try {
     const result = await model.generateContent(prompt);
