@@ -113,6 +113,38 @@ export interface VehicleReference {
   description: string;
   type: "fuse_box" | "relay" | "component_location" | "wiring" | "manual" | "other";
   source: string;
+  image_url?: string;
+}
+
+export interface FuseEntry {
+  number: string;
+  amperage: string;
+  circuit: string;
+  color?: string;
+  protected_component?: string;
+}
+
+export interface FuseBox {
+  name: string;
+  location: string;
+  reference?: string;
+  fuses: FuseEntry[];
+  image_url?: string;
+}
+
+export interface RelayInfo {
+  reference: string;
+  function: string;
+  location: string;
+  box_name?: string;
+}
+
+export interface ComponentLocation {
+  name: string;
+  location: string;
+  description?: string;
+  connector?: string;
+  image_url?: string;
 }
 
 export interface AIAnalysis {
@@ -129,6 +161,9 @@ export interface AIAnalysis {
   diagram_analysis?: DiagramAnalysis;
   diagram_image_url?: string;
   vehicle_references?: VehicleReference[];
+  fuse_boxes?: FuseBox[];
+  relays?: RelayInfo[];
+  component_locations?: ComponentLocation[];
 }
 
 export interface Diagnostic {

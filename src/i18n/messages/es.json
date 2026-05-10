@@ -364,9 +364,29 @@
       "solutions": "Soluciones",
       "tests": "Pruebas",
       "diagram": "Diagrama",
+      "fuses": "Fusibles",
+      "components": "Componentes",
       "references": "Referencias",
       "forums": "Foros",
       "videos": "Videos"
+    },
+    "fuses": {
+      "title": "Cajas de fusibles",
+      "subtitle": "Esquemas de fusibles y relés de tu vehículo",
+      "fuse": "Fusible",
+      "amperage": "Amperaje",
+      "circuit": "Circuito",
+      "protects": "Protege",
+      "noData": "No se encontraron datos de fusibles para este vehículo",
+      "relays": "Relés",
+      "function": "Función",
+      "location": "Ubicación"
+    },
+    "components": {
+      "title": "Ubicación de componentes",
+      "subtitle": "Dónde encontrar los componentes relacionados",
+      "connector": "Conector",
+      "noData": "No se encontraron ubicaciones de componentes"
     },
     "stats": {
       "codes": "Códigos",

@@ -364,9 +364,29 @@
       "solutions": "Solutions",
       "tests": "Tests",
       "diagram": "Diagram",
+      "fuses": "Fuses",
+      "components": "Components",
       "references": "References",
       "forums": "Forums",
       "videos": "Videos"
+    },
+    "fuses": {
+      "title": "Fuse boxes",
+      "subtitle": "Fuse and relay diagrams for your vehicle",
+      "fuse": "Fuse",
+      "amperage": "Amperage",
+      "circuit": "Circuit",
+      "protects": "Protects",
+      "noData": "No fuse data found for this vehicle",
+      "relays": "Relays",
+      "function": "Function",
+      "location": "Location"
+    },
+    "components": {
+      "title": "Component locations",
+      "subtitle": "Where to find related components",
+      "connector": "Connector",
+      "noData": "No component locations found"
     },
     "stats": {
       "codes": "Codes",

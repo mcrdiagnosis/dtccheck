@@ -328,6 +328,8 @@ export default function DiagnosticResultPage() {
           <TabsTrigger value="solutions" className="gap-1.5 text-xs flex-1 min-w-[80px]"><Wrench className="h-3.5 w-3.5" />{tr("tabs.solutions")}</TabsTrigger>
           <TabsTrigger value="tests" className="gap-1.5 text-xs flex-1 min-w-[80px]"><ClipboardCheck className="h-3.5 w-3.5" />{tr("tabs.tests")}</TabsTrigger>
           <TabsTrigger value="diagram" className="gap-1.5 text-xs flex-1 min-w-[80px]"><ImageIcon className="h-3.5 w-3.5" />{tr("tabs.diagram")}</TabsTrigger>
+          <TabsTrigger value="fuses" className="gap-1.5 text-xs flex-1 min-w-[80px]"><Zap className="h-3.5 w-3.5" />{tr("tabs.fuses")}</TabsTrigger>
+          <TabsTrigger value="components" className="gap-1.5 text-xs flex-1 min-w-[80px]"><MapPin className="h-3.5 w-3.5" />{tr("tabs.components")}</TabsTrigger>
           <TabsTrigger value="references" className="gap-1.5 text-xs flex-1 min-w-[80px]"><BookOpen className="h-3.5 w-3.5" />{tr("tabs.references")}</TabsTrigger>
           <TabsTrigger value="forums" className="gap-1.5 text-xs flex-1 min-w-[80px]"><MessageSquare className="h-3.5 w-3.5" />{tr("tabs.forums")}</TabsTrigger>
           <TabsTrigger value="videos" className="gap-1.5 text-xs flex-1 min-w-[80px]"><svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814z"/></svg>{tr("tabs.videos")}</TabsTrigger>
@@ -515,6 +517,108 @@ export default function DiagnosticResultPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Fuses Tab */}
+        <TabsContent value="fuses">
+          <div className="mt-4 space-y-4">
+            {(analysis.fuse_boxes && analysis.fuse_boxes.length > 0) ? analysis.fuse_boxes.map((box, bi) => (
+              <Card key={bi} className="game-card">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><Zap className="h-4 w-4 text-amber-500" /></div>
+                    <div>
+                      <CardTitle className="text-sm">{box.name}</CardTitle>
+                      <p className="text-xs text-muted-foreground">{box.location}{box.reference ? ` (${box.reference})` : ""}</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {box.image_url && (
+                    <div className="mb-3 rounded-lg overflow-hidden border">
+                      <img src={`/api/proxy/image?url=${encodeURIComponent(box.image_url)}`} alt={box.name} className="w-full max-h-64 object-contain bg-muted" />
+                    </div>
+                  )}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="border-b border-border/50">
+                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.fuse")}</th>
+                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.amperage")}</th>
+                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.circuit")}</th>
+                          <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">{tr("fuses.protects")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {box.fuses.map((fuse, fi) => (
+                          <tr key={fi} className="border-b border-border/20 hover:bg-muted/30">
+                            <td className="py-1.5 px-2 font-mono font-bold">{fuse.number}</td>
+                            <td className="py-1.5 px-2">
+                              <Badge variant="outline" className="text-[10px] font-mono">{fuse.amperage}</Badge>
+                            </td>
+                            <td className="py-1.5 px-2">{fuse.circuit}</td>
+                            <td className="py-1.5 px-2 text-muted-foreground hidden sm:table-cell">{fuse.protected_component || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )) : <p className="text-sm text-muted-foreground text-center py-8">{tr("fuses.noData")}</p>}
+
+            {analysis.relays && analysis.relays.length > 0 && (
+              <Card className="game-card">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm flex items-center gap-2"><Zap className="h-4 w-4 text-blue-500" />{tr("fuses.relays")}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {analysis.relays.map((relay, ri) => (
+                      <div key={ri} className="rounded-lg border border-border/50 p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant="outline" className="font-mono text-[10px]">{relay.reference}</Badge>
+                          {relay.box_name && <span className="text-[10px] text-muted-foreground">{relay.box_name}</span>}
+                        </div>
+                        <p className="text-xs">{relay.function}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{tr("fuses.location")}: {relay.location}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* Components Tab */}
+        <TabsContent value="components">
+          <div className="mt-4">
+            {(analysis.component_locations && analysis.component_locations.length > 0) ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {analysis.component_locations.map((comp, ci) => (
+                  <Card key={ci} className="game-card p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
+                        <MapPin className="h-4 w-4 text-emerald-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm">{comp.name}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{comp.location}</p>
+                        {comp.description && <p className="text-xs text-muted-foreground mt-1">{comp.description}</p>}
+                        {comp.connector && <Badge variant="outline" className="font-mono text-[10px] mt-1.5">{tr("components.connector")}: {comp.connector}</Badge>}
+                        {comp.image_url && (
+                          <div className="mt-2 rounded-lg overflow-hidden border">
+                            <img src={`/api/proxy/image?url=${encodeURIComponent(comp.image_url)}`} alt={comp.name} className="w-full max-h-40 object-contain bg-muted" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+              </div>
+            ) : <p className="text-sm text-muted-foreground text-center py-8">{tr("components.noData")}</p>}
+          </div>
         </TabsContent>
 
         {/* Vehicle References Tab */}

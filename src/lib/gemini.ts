@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis, VehicleReference } from "@/types/diagnostic";
+import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis, VehicleReference, FuseBox, RelayInfo, ComponentLocation } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
@@ -778,4 +778,83 @@ Reglas:
   }
 
   return [];
+}
+
+export async function generateVehicleTechnicalData(
+  dtcCodes: string[],
+  vehicleInfo: VehicleInfo,
+  locale?: string
+): Promise<{ fuse_boxes: FuseBox[]; relays: RelayInfo[]; component_locations: ComponentLocation[] }> {
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 65536 },
+  });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model} ${vehicleInfo.engine || ""}`.trim();
+  const codesStr = dtcCodes.join(", ");
+
+  const localeLangMap: Record<string, string> = { es: "español", en: "English", pt: "português" };
+  const lang = localeLangMap[locale || "es"] || "español";
+
+  const prompt = `Genera información técnica detallada para un ${vehicleStr}. Códigos DTC: ${codesStr}.
+
+Busca en internet la información exacta de este vehículo. Responde en ${lang}.
+
+Responde SOLO JSON válido (sin markdown):
+{
+  "fuse_boxes": [
+    {
+      "name": "Caja de fusibles motor (BM34/BSM)",
+      "location": "Compartimento motor, lado izquierdo",
+      "reference": "BM34",
+      "fuses": [
+        {"number": "F1", "amperage": "15A", "circuit": "Inyectores", "color": "azul", "protected_component": "Rail de inyectores"},
+        {"number": "F2", "amperage": "10A", "circuit": "Sensor O2", "color": "rojo", "protected_component": "Sonda lambda upstream"}
+      ],
+      "image_url": ""
+    }
+  ],
+  "relays": [
+    {"reference": "R1", "function": "Relé principal del motor", "location": "BM34 caja motor", "box_name": "BM34"}
+  ],
+  "component_locations": [
+    {
+      "name": "Sensor de oxígeno upstream",
+      "location": "Colector de escape, antes del catalizador",
+      "description": "Conector gris, 4 pines. Accesible desde arriba levantando el motor.",
+      "connector": "C123",
+      "image_url": ""
+    }
+  ]
+}
+
+REGLAS IMPORTANTES:
+- Incluye TODAS las cajas de fusibles del vehículo (motor, habitáculo, baúl si aplica)
+- Para cada caja lista TODOS los fusibles con número, amperaje y circuito
+- Colores de fusible: 5A=naranja, 7.5A=marrón, 10A=rojo, 15A=azul, 20A=amarillo, 25A=blanco, 30A=verde, 40A=rosa
+- Para PSA/Peugeot/Citroën usa referencias: BM34, BSM, BSI1, coche fuse box, etc.
+- Incluye al menos los relés relacionados con los sistemas afectados por los DTC
+- Incluye ubicación física de los componentes relacionados con los DTC
+- image_url: si encuentras URLs de imágenes de diagramas de fusibles o ubicación de componentes, inclúyelas. Si no, déjalo vacío ""
+- Sé exhaustivo con los datos de fusibles - es información crítica para el diagnóstico`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const parsed = safeJsonParse(text);
+
+    if (parsed) {
+      return {
+        fuse_boxes: parsed.fuse_boxes || [],
+        relays: parsed.relays || [],
+        component_locations: parsed.component_locations || [],
+      };
+    }
+  } catch (e) {
+    console.error("generateVehicleTechnicalData error:", e);
+  }
+
+  return { fuse_boxes: [], relays: [], component_locations: [] };
 }

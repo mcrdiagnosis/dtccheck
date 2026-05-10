@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractVehicleInfo } from "@/lib/pdf-parser";
-import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources, searchVehicleReferences } from "@/lib/gemini";
+import { analyzeDTCs, extractDTCsFromPDF, searchYouTubeVideos, validateVideoResources, searchVehicleReferences, generateVehicleTechnicalData } from "@/lib/gemini";
 import { createClient } from "@/lib/supabase/server";
 
 export async function POST(request: NextRequest) {
@@ -59,11 +59,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log("Searching vehicle references...");
-    const refs = await searchVehicleReferences(dtcCodes, mergedVehicle, locale);
-    if (refs.length > 0) {
-      aiAnalysis.vehicle_references = refs;
-    }
+    console.log("Searching vehicle references & technical data...");
+    const [refs, techData] = await Promise.all([
+      searchVehicleReferences(dtcCodes, mergedVehicle, locale),
+      generateVehicleTechnicalData(dtcCodes, mergedVehicle, locale),
+    ]);
+    if (refs.length > 0) aiAnalysis.vehicle_references = refs;
+    if (techData.fuse_boxes.length > 0) aiAnalysis.fuse_boxes = techData.fuse_boxes;
+    if (techData.relays.length > 0) aiAnalysis.relays = techData.relays;
+    if (techData.component_locations.length > 0) aiAnalysis.component_locations = techData.component_locations;
 
     const id = crypto.randomUUID();
     const diagnostic = {
