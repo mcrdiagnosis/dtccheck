@@ -116,12 +116,16 @@ export interface VehicleReference {
   image_url?: string;
 }
 
+export type FuseType = "MINI" | "ATO" | "ATO_SHUNT" | "MAXI" | "JCASE";
+
 export interface FuseEntry {
   number: string;
   amperage: string;
   circuit: string;
   color?: string;
   protected_component?: string;
+  type?: FuseType;
+  position?: { row: number; col: number };
 }
 
 export interface FuseBox {
@@ -130,6 +134,8 @@ export interface FuseBox {
   reference?: string;
   fuses: FuseEntry[];
   image_url?: string;
+  grid?: { rows: number; cols: number };
+  diagram_url?: string;
 }
 
 export interface RelayInfo {

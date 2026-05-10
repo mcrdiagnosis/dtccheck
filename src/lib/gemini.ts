@@ -768,7 +768,7 @@ export async function generateVehicleTechnicalData(
 
   const prompt = `Genera información técnica detallada para un ${vehicleStr}. Códigos DTC: ${codesStr}.
 
-Busca en internet la información exacta de este vehículo. Responde en ${lang}.
+Busca en internet la información exacta de este vehículo, incluyendo diagramas de fusibles. Responde en ${lang}.
 
 Responde SOLO JSON válido (sin markdown):
 {
@@ -777,11 +777,13 @@ Responde SOLO JSON válido (sin markdown):
       "name": "Caja de fusibles motor (BM34/BSM)",
       "location": "Compartimento motor, lado izquierdo",
       "reference": "BM34",
+      "grid": {"rows": 4, "cols": 5},
       "fuses": [
-        {"number": "F1", "amperage": "15A", "circuit": "Inyectores", "color": "azul", "protected_component": "Rail de inyectores"},
-        {"number": "F2", "amperage": "10A", "circuit": "Sensor O2", "color": "rojo", "protected_component": "Sonda lambda upstream"}
+        {"number": "F1", "amperage": "15A", "circuit": "Inyectores", "color": "azul", "protected_component": "Rail de inyectores", "type": "MINI", "position": {"row": 1, "col": 1}},
+        {"number": "F2", "amperage": "10A", "circuit": "Sensor O2", "color": "rojo", "protected_component": "Sonda lambda upstream", "type": "MINI", "position": {"row": 1, "col": 2}}
       ],
-      "image_url": ""
+      "image_url": "",
+      "diagram_url": ""
     }
   ],
   "relays": [
@@ -802,11 +804,16 @@ REGLAS IMPORTANTES:
 - Incluye TODAS las cajas de fusibles del vehículo (motor, habitáculo, baúl si aplica)
 - Para cada caja lista TODOS los fusibles con número, amperaje y circuito
 - Colores de fusible: 5A=naranja, 7.5A=marrón, 10A=rojo, 15A=azul, 20A=amarillo, 25A=blanco, 30A=verde, 40A=rosa
-- Para PSA/Peugeot/Citroën usa referencias: BM34, BSM, BSI1, coche fuse box, etc.
+- Tipo de fusible (type): "MINI" (fusibles pequeños automotive), "ATO" (fusibles estándar transparentes), "ATO_SHUNT" (shunt tipo SFI), "MAXI" (fusibles grandes), "JCASE" (fusibles cartucho)
+- position: indica la posición física del fusible dentro de la caja. row y col empiezan en 1. Distribuye los fusibles como están físicamente en la caja real.
+- grid: indica el tamaño de la grilla (rows x cols) de la caja de fusibles. Los fusibles que no existen en ciertas posiciones simplemente no se listan.
+- Para PSA/Peugeot/Citroën usa referencias: BM34, BSM, BSI1, etc.
 - Incluye al menos los relés relacionados con los sistemas afectados por los DTC
 - Incluye ubicación física de los componentes relacionados con los DTC
-- image_url: si encuentras URLs de imágenes de diagramas de fusibles o ubicación de componentes, inclúyelas. Si no, déjalo vacío ""
-- Sé exhaustivo con los datos de fusibles - es información crítica para el diagnóstico`;
+- image_url: URL de imagen del diagrama de fusibles si la encuentras. Si no, déjalo vacío ""
+- diagram_url: URL de imagen o diagrama SVG de la caja de fusibles si la encuentras. Si no, déjalo vacío ""
+- Sé exhaustivo con los datos de fusibles - es información crítica para el diagnóstico
+- IMPORTANTE: La distribución de position debe reflejar la disposición REAL de la caja de fusibles, mirando fotos o diagramas del vehículo`;
 
   try {
     const result = await model.generateContent(prompt);

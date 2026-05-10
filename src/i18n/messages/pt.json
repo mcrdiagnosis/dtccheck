@@ -382,7 +382,13 @@
       "fuses": "fusíveis",
       "search": "Buscar fusível...",
       "function": "Função",
-      "location": "Localização"
+      "location": "Localização",
+      "viewDiagram": "Vista diagrama",
+      "viewList": "Vista lista",
+      "viewImage": "Vista imagem",
+      "rotate": "Girar",
+      "fullscreen": "Tela cheia",
+      "exitFullscreen": "Sair da tela cheia"
     },
     "components": {
       "title": "Localização de componentes",

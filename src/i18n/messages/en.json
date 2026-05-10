@@ -382,7 +382,13 @@
       "fuses": "fuses",
       "search": "Search fuse...",
       "function": "Function",
-      "location": "Location"
+      "location": "Location",
+      "viewDiagram": "Diagram view",
+      "viewList": "List view",
+      "viewImage": "Image view",
+      "rotate": "Rotate",
+      "fullscreen": "Fullscreen",
+      "exitFullscreen": "Exit fullscreen"
     },
     "components": {
       "title": "Component locations",
