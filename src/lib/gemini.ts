@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIAnalysis, VehicleInfo, VideoResource, DiagramAnalysis, VehicleReference, FuseBox, RelayInfo, ComponentLocation } from "@/types/diagnostic";
 import { Part } from "@google/generative-ai";
+import { scrapeFuseImages } from "@/lib/fuse-scraper";
 
 const SYSTEM_PROMPT = `Eres un técnico automotriz experto. Analiza los códigos DTC proporcionados para el vehículo.
 
@@ -851,23 +852,19 @@ export async function fetchExternalFuseDiagrams(
   const makeSlug = vehicleInfo.make.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const modelSlug = vehicleInfo.model.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-  let scrapedDiagrams: { url: string; source?: string }[] = [];
-  let scrapedLocations: { url: string; source?: string }[] = [];
+  let scrapedDiagrams: string[] = [];
+  let scrapedLocations: string[] = [];
   try {
-    const scrapeUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/fuses/scrape?make=${encodeURIComponent(vehicleInfo.make)}&model=${encodeURIComponent(vehicleInfo.model)}&year=${vehicleInfo.year || ""}`;
-    const scrapeRes = await fetch(scrapeUrl, { signal: AbortSignal.timeout(12000) });
-    if (scrapeRes.ok) {
-      const scrapeData = await scrapeRes.json();
-      scrapedDiagrams = scrapeData.diagrams || [];
-      scrapedLocations = scrapeData.locations || [];
-      console.log(`Scraped ${scrapedDiagrams.length} diagrams + ${scrapedLocations.length} locations from ${scrapeData.sources?.join(", ")}`);
-    }
+    const scrapeResult = await scrapeFuseImages(vehicleInfo.make, vehicleInfo.model, vehicleInfo.year?.toString());
+    scrapedDiagrams = scrapeResult.diagrams.map((d) => d.url);
+    scrapedLocations = scrapeResult.locations.map((l) => l.url);
+    console.log(`Scraped ${scrapedDiagrams.length} diagrams + ${scrapedLocations.length} locations from opinautos/fuse-box.info`);
   } catch (e) {
     console.error("Fuse scrape error:", e);
   }
 
-  const diagramUrls = scrapedDiagrams.map((d) => d.url);
-  const locationUrls = scrapedLocations.map((l) => l.url);
+  const diagramUrls = scrapedDiagrams;
+  const locationUrls = scrapedLocations;
 
   if (existingFuseBoxes.length > 0) {
     const hasDiagrams = existingFuseBoxes.some((b) => b.diagram_url || b.image_url);
