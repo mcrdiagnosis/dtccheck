@@ -69,17 +69,25 @@ export async function POST(request: NextRequest) {
       if (techData.fuse_boxes.length > 0) aiAnalysis.fuse_boxes = techData.fuse_boxes;
       if (techData.relays.length > 0) aiAnalysis.relays = techData.relays;
       if (techData.component_locations.length > 0) aiAnalysis.component_locations = techData.component_locations;
-
-      if (aiAnalysis.fuse_boxes && aiAnalysis.fuse_boxes.length > 0) {
-        try {
-          const enhanced = await fetchExternalFuseDiagrams(mergedVehicle, aiAnalysis.fuse_boxes);
-          aiAnalysis.fuse_boxes = enhanced;
-        } catch (e) {
-          console.error("External fuse diagram fetch failed (non-blocking):", e);
-        }
-      }
     } catch (e) {
       console.error("Vehicle data search failed (non-blocking):", e);
+    }
+
+    if (!aiAnalysis.fuse_boxes || aiAnalysis.fuse_boxes.length === 0) {
+      try {
+        console.log("No fuse data from techData, fetching from external sources...");
+        const externalFuses = await fetchExternalFuseDiagrams(mergedVehicle, []);
+        if (externalFuses.length > 0) aiAnalysis.fuse_boxes = externalFuses;
+      } catch (e) {
+        console.error("External fuse fetch failed:", e);
+      }
+    } else {
+      try {
+        const enhanced = await fetchExternalFuseDiagrams(mergedVehicle, aiAnalysis.fuse_boxes);
+        aiAnalysis.fuse_boxes = enhanced;
+      } catch (e) {
+        console.error("External fuse diagram enhance failed:", e);
+      }
     }
 
     const id = crypto.randomUUID();

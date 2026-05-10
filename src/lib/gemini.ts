@@ -840,68 +840,97 @@ export async function fetchExternalFuseDiagrams(
   vehicleInfo: VehicleInfo,
   existingFuseBoxes: FuseBox[]
 ): Promise<FuseBox[]> {
-  if (existingFuseBoxes.length === 0) return [];
-
-  const hasDiagrams = existingFuseBoxes.some((b) => b.diagram_url || b.image_url);
-  if (hasDiagrams) return existingFuseBoxes;
-
   const ai = getGenAI();
   const model = ai.getGenerativeModel({
     model: "gemini-2.5-flash",
     tools: [{ googleSearch: {} } as any],
-    generationConfig: { maxOutputTokens: 8192 },
+    generationConfig: { maxOutputTokens: 32768 },
   });
 
   const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model}`.trim();
-  const makeSlug = vehicleInfo.make.toLowerCase().replace(/\s+/g, "-");
-  const modelSlug = vehicleInfo.model.toLowerCase().replace(/\s+/g, "-");
+  const makeSlug = vehicleInfo.make.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+  const modelSlug = vehicleInfo.model.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 
-  const boxNames = existingFuseBoxes.map((b) => b.name).join(", ");
+  if (existingFuseBoxes.length > 0) {
+    const hasDiagrams = existingFuseBoxes.some((b) => b.diagram_url || b.image_url);
+    if (hasDiagrams) return existingFuseBoxes;
 
-  const prompt = `Busca imágenes de diagramas de fusibles para un ${vehicleStr}.
+    const boxNames = existingFuseBoxes.map((b) => b.name).join(", ");
+    const prompt = `Busca imágenes de diagramas de fusibles para un ${vehicleStr}.
+Busca en: opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}, fuse-box.info, autofusebox.info
+
+Cajas encontradas: ${boxNames}
+
+Responde SOLO JSON:
+{"diagrams":[{"box_index":0,"diagram_url":"https://...","image_url":"https://...","source":"opinautos.com"}]}
+Si no encuentras, no la incluyas. No inventes URLs.`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const parsed = safeJsonParse(result.response.text());
+      if (parsed?.diagrams && Array.isArray(parsed.diagrams)) {
+        const updated = [...existingFuseBoxes];
+        for (const d of parsed.diagrams) {
+          const idx = d.box_index ?? 0;
+          if (idx >= 0 && idx < updated.length) {
+            if (d.diagram_url && !updated[idx].diagram_url) updated[idx] = { ...updated[idx], diagram_url: d.diagram_url };
+            if (d.image_url && !updated[idx].image_url) updated[idx] = { ...updated[idx], image_url: d.image_url };
+          }
+        }
+        return updated;
+      }
+    } catch (e) {
+      console.error("fetchExternalFuseDiagrams enhance error:", e);
+    }
+    return existingFuseBoxes;
+  }
+
+  const prompt = `Busca el diagrama completo de fusibles para un ${vehicleStr}.
 Busca en estos sitios:
-- opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
-- fuse-box.info
-- autofusebox.info
+- https://www.opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
+- https://fuse-box.info/${makeSlug}/${modelSlug}
+- https://autofusebox.info
 
-Necesito las URLs de las imágenes reales de los diagramas de cada caja de fusibles.
+Extrae TODOS los fusibles de TODAS las cajas de fusibles (motor, habitáculo, baúl).
+También busca las URLs de las imágenes/diagramas reales de cada caja.
 
-Cajas de fusibles encontradas: ${boxNames}
-
-Responde SOLO JSON válido:
+Responde SOLO JSON válido (sin markdown):
 {
-  "diagrams": [
-    {"box_index": 0, "diagram_url": "https://...", "image_url": "https://...", "source": "opinautos.com"},
-    {"box_index": 1, "diagram_url": "https://...", "image_url": "https://...", "source": "fuse-box.info"}
+  "fuse_boxes": [
+    {
+      "name": "Caja de fusibles del habitáculo (BSI1)",
+      "location": "Interior, lado izquierdo del tablero",
+      "reference": "BSI1",
+      "grid": {"rows": 3, "cols": 5},
+      "fuses": [
+        {"number": "F4", "amperage": "20A", "circuit": "Pantalla multifunción - Radio - Controles volante", "color": "amarillo", "protected_component": "Pantalla y radio", "type": "MINI", "position": {"row": 1, "col": 1}, "icon": "radio"},
+        {"number": "F5", "amperage": "15A", "circuit": "Caja de cambios automática", "color": "azul", "protected_component": "Caja automática", "type": "MINI", "position": {"row": 1, "col": 2}, "icon": "engine"}
+      ],
+      "diagram_url": "https://images.opinautos.com/...",
+      "image_url": "https://images.opinautos.com/..."
+    }
   ]
 }
 
-Si no encuentras imágenes para alguna caja, no la incluyas en el array.
-IMPORTANTE: Busca URLs reales de imágenes. No inventes URLs.`;
+REGLAS:
+- Colores: 5A=naranja, 7.5A=marrón, 10A=rojo, 15A=azul, 20A=amarillo, 25A=blanco, 30A=verde, 40A=rosa
+- type: "MINI", "ATO", "ATO_SHUNT", "MAXI", "JCASE"
+- icon: "radio", "light", "engine", "window", "airbag", "ac", "brake", "wiper", "lock", "horn", "fuel", "abs", "other"
+- position: row/col empiezan en 1, refleja la disposición FÍSICA real
+- diagram_url: URL de la imagen del diagrama interactivo si la encuentras
+- image_url: URL de la foto de la caja real si la encuentras
+- Sé EXHAUSTIVO - lista TODOS los fusibles de TODAS las cajas
+- Busca especialmente en opinautos.com que tiene diagramas interactivos completos`;
 
   try {
     const result = await model.generateContent(prompt);
-    const text = result.response.text();
-    const parsed = safeJsonParse(text);
-
-    if (parsed?.diagrams && Array.isArray(parsed.diagrams)) {
-      const updated = [...existingFuseBoxes];
-      for (const d of parsed.diagrams) {
-        const idx = d.box_index ?? 0;
-        if (idx >= 0 && idx < updated.length) {
-          if (d.diagram_url && !updated[idx].diagram_url) {
-            updated[idx] = { ...updated[idx], diagram_url: d.diagram_url };
-          }
-          if (d.image_url && !updated[idx].image_url) {
-            updated[idx] = { ...updated[idx], image_url: d.image_url };
-          }
-        }
-      }
-      return updated;
+    const parsed = safeJsonParse(result.response.text());
+    if (parsed?.fuse_boxes && Array.isArray(parsed.fuse_boxes) && parsed.fuse_boxes.length > 0) {
+      return parsed.fuse_boxes;
     }
   } catch (e) {
-    console.error("fetchExternalFuseDiagrams error:", e);
+    console.error("fetchExternalFuseDiagrams full error:", e);
   }
 
-  return existingFuseBoxes;
+  return [];
 }
