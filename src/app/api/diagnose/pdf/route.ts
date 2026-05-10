@@ -60,14 +60,18 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("Searching vehicle references & technical data...");
-    const [refs, techData] = await Promise.all([
-      searchVehicleReferences(dtcCodes, mergedVehicle, locale),
-      generateVehicleTechnicalData(dtcCodes, mergedVehicle, locale),
-    ]);
-    if (refs.length > 0) aiAnalysis.vehicle_references = refs;
-    if (techData.fuse_boxes.length > 0) aiAnalysis.fuse_boxes = techData.fuse_boxes;
-    if (techData.relays.length > 0) aiAnalysis.relays = techData.relays;
-    if (techData.component_locations.length > 0) aiAnalysis.component_locations = techData.component_locations;
+    try {
+      const [refs, techData] = await Promise.all([
+        searchVehicleReferences(dtcCodes, mergedVehicle, locale),
+        generateVehicleTechnicalData(dtcCodes, mergedVehicle, locale),
+      ]);
+      if (refs.length > 0) aiAnalysis.vehicle_references = refs;
+      if (techData.fuse_boxes.length > 0) aiAnalysis.fuse_boxes = techData.fuse_boxes;
+      if (techData.relays.length > 0) aiAnalysis.relays = techData.relays;
+      if (techData.component_locations.length > 0) aiAnalysis.component_locations = techData.component_locations;
+    } catch (e) {
+      console.error("Vehicle data search failed (non-blocking):", e);
+    }
 
     const id = crypto.randomUUID();
     const diagnostic = {

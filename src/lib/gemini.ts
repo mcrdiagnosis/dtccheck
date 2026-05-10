@@ -440,8 +440,6 @@ REGLAS:
   const models = [
     { model: "gemini-2.5-flash" as const, tools: true },
     { model: "gemini-2.5-flash" as const, tools: false },
-    { model: "gemini-3.1-pro-preview" as const, tools: true },
-    { model: "gemini-3.1-pro-preview" as const, tools: false },
   ];
 
   for (let i = 0; i < models.length; i++) {
@@ -494,9 +492,9 @@ async function validateYouTubeId(videoId: string): Promise<boolean> {
 
 export async function validateVideoResources(
   videos: VideoResource[],
-  dtcCodes?: string[],
-  vehicleInfo?: VehicleInfo,
-  locale?: string
+  _dtcCodes?: string[],
+  _vehicleInfo?: VehicleInfo,
+  _locale?: string
 ): Promise<VideoResource[]> {
   if (!videos || videos.length === 0) return [];
 
@@ -507,42 +505,12 @@ export async function validateVideoResources(
       const videoId = match[1];
       const valid = await validateYouTubeId(videoId);
       if (valid) return v;
-      console.log("Invalid YT ID:", videoId, "- will search for replacement");
-      return { ...v, _invalid: true as const, _videoId: videoId };
+      const searchQuery = encodeURIComponent(`${v.title} ${v.channel || ""}`);
+      return { ...v, url: `https://www.youtube.com/results?search_query=${searchQuery}` };
     })
   );
 
-  const hasInvalid = validated.some((v: any) => v?._invalid);
-  if (hasInvalid && dtcCodes && vehicleInfo) {
-    console.log("Searching replacement videos for", dtcCodes.join(","));
-    const replacements = await searchYouTubeVideos(dtcCodes, vehicleInfo, locale);
-
-    if (replacements.length > 0) {
-      const replacementValidated = await Promise.all(
-        replacements.map(async (r) => {
-          const m = r.url?.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]+)/);
-          if (!m) return null;
-          const ok = await validateYouTubeId(m[1]);
-          return ok ? r : null;
-        })
-      );
-      const good = replacementValidated.filter(Boolean) as VideoResource[];
-      if (good.length > 0) {
-        console.log("Found", good.length, "valid replacement videos");
-        return good;
-      }
-    }
-  }
-
-  return validated
-    .filter(Boolean)
-    .map((v: any) => {
-      if (v._invalid) {
-        const searchQuery = encodeURIComponent(`${v.title} ${v.channel || ""}`);
-        return { ...v, url: `https://www.youtube.com/results?search_query=${searchQuery}` };
-      }
-      return v;
-    }) as VideoResource[];
+  return validated.filter(Boolean) as VideoResource[];
 }
 
 export async function analyzeDiagramImage(
