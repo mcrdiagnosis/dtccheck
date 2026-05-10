@@ -835,3 +835,73 @@ REGLAS IMPORTANTES:
 
   return { fuse_boxes: [], relays: [], component_locations: [] };
 }
+
+export async function fetchExternalFuseDiagrams(
+  vehicleInfo: VehicleInfo,
+  existingFuseBoxes: FuseBox[]
+): Promise<FuseBox[]> {
+  if (existingFuseBoxes.length === 0) return [];
+
+  const hasDiagrams = existingFuseBoxes.some((b) => b.diagram_url || b.image_url);
+  if (hasDiagrams) return existingFuseBoxes;
+
+  const ai = getGenAI();
+  const model = ai.getGenerativeModel({
+    model: "gemini-2.5-flash",
+    tools: [{ googleSearch: {} } as any],
+    generationConfig: { maxOutputTokens: 8192 },
+  });
+
+  const vehicleStr = `${vehicleInfo.year} ${vehicleInfo.make} ${vehicleInfo.model}`.trim();
+  const makeSlug = vehicleInfo.make.toLowerCase().replace(/\s+/g, "-");
+  const modelSlug = vehicleInfo.model.toLowerCase().replace(/\s+/g, "-");
+
+  const boxNames = existingFuseBoxes.map((b) => b.name).join(", ");
+
+  const prompt = `Busca imágenes de diagramas de fusibles para un ${vehicleStr}.
+Busca en estos sitios:
+- opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${vehicleInfo.year || ""}
+- fuse-box.info
+- autofusebox.info
+
+Necesito las URLs de las imágenes reales de los diagramas de cada caja de fusibles.
+
+Cajas de fusibles encontradas: ${boxNames}
+
+Responde SOLO JSON válido:
+{
+  "diagrams": [
+    {"box_index": 0, "diagram_url": "https://...", "image_url": "https://...", "source": "opinautos.com"},
+    {"box_index": 1, "diagram_url": "https://...", "image_url": "https://...", "source": "fuse-box.info"}
+  ]
+}
+
+Si no encuentras imágenes para alguna caja, no la incluyas en el array.
+IMPORTANTE: Busca URLs reales de imágenes. No inventes URLs.`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const text = result.response.text();
+    const parsed = safeJsonParse(text);
+
+    if (parsed?.diagrams && Array.isArray(parsed.diagrams)) {
+      const updated = [...existingFuseBoxes];
+      for (const d of parsed.diagrams) {
+        const idx = d.box_index ?? 0;
+        if (idx >= 0 && idx < updated.length) {
+          if (d.diagram_url && !updated[idx].diagram_url) {
+            updated[idx] = { ...updated[idx], diagram_url: d.diagram_url };
+          }
+          if (d.image_url && !updated[idx].image_url) {
+            updated[idx] = { ...updated[idx], image_url: d.image_url };
+          }
+        }
+      }
+      return updated;
+    }
+  } catch (e) {
+    console.error("fetchExternalFuseDiagrams error:", e);
+  }
+
+  return existingFuseBoxes;
+}
