@@ -1,16 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-interface ScrapeResult {
-  source: string;
-  page_url: string;
-  images: { url: string; alt?: string; context?: string }[];
-  box_names: string[];
-  location_images: { url: string; alt?: string }[];
-}
-
 const UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
 
-async function scrapeOpinautos(makeSlug: string, modelSlug: string, yearSlug: string): Promise<ScrapeResult | null> {
+interface ScrapedImage {
+  url: string;
+  type: "diagram" | "location" | "thumbnail" | "vehicle";
+  source: string;
+}
+
+async function scrapeOpinautos(makeSlug: string, modelSlug: string, yearSlug: string): Promise<ScrapedImage[]> {
   const urls = [
     `https://www.opinautos.com/${makeSlug}/${modelSlug}/info/fusibles/${yearSlug}`,
     `https://www.opinautos.com/${makeSlug}/${modelSlug}/info/fusibles`,
@@ -24,39 +22,32 @@ async function scrapeOpinautos(makeSlug: string, modelSlug: string, yearSlug: st
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) continue;
-
       const html = await res.text();
-      const images: { url: string; alt?: string; context?: string }[] = [];
+
+      const images: ScrapedImage[] = [];
       const seen = new Set<string>();
 
-      const thumbRegex = /images\.opinautos\.com\/legos\/fusebox-thumbnails\/[^\s"'?]+/g;
-      let match;
-      while ((match = thumbRegex.exec(html)) !== null) {
-        const url = match[0];
-        if (!seen.has(url)) { seen.add(url); images.push({ url, context: "thumbnail" }); }
-      }
+      const extract = (regex: RegExp, type: ScrapedImage["type"]) => {
+        let m;
+        while ((m = regex.exec(html)) !== null) {
+          const url = m[0].replace(/["'>]/g, "");
+          if (!seen.has(url)) {
+            seen.add(url);
+            images.push({ url, type, source: "opinautos.com" });
+          }
+        }
+      };
 
-      const fullRegex = /images\.opinautos\.com\/legos\/fusebox\/[^\s"'?]+/g;
-      while ((match = fullRegex.exec(html)) !== null) {
-        const url = match[0];
-        if (!seen.has(url)) { seen.add(url); images.push({ url, context: "diagram" }); }
-      }
+      extract(/images\.opinautos\.com\/legos\/fusebox-thumbnails\/[^\s"'?]+/g, "thumbnail");
+      extract(/images\.opinautos\.com\/legos\/fusebox\/[^\s"'?]+/g, "diagram");
 
-      const boxNames: string[] = [];
-      const nameRegex = /Fusiblera[^<]*|Caja de fusibles[^<]*/gi;
-      while ((match = nameRegex.exec(html)) !== null) {
-        boxNames.push(match[0].trim());
-      }
-
-      if (images.length > 0) {
-        return { source: "opinautos.com", page_url: pageUrl, images, box_names: boxNames, location_images: [] };
-      }
+      if (images.length > 0) return images;
     } catch { continue; }
   }
-  return null;
+  return [];
 }
 
-async function scrapeFuseBoxInfo(makeSlug: string, modelSlug: string): Promise<ScrapeResult | null> {
+async function scrapeFuseBoxInfo(makeSlug: string, modelSlug: string): Promise<ScrapedImage[]> {
   const urls = [
     `https://fuse-box.info/${makeSlug}/${makeSlug}-${modelSlug}-fuses`,
     `https://fuse-box.info/${makeSlug}/${makeSlug}-${modelSlug}`,
@@ -70,51 +61,46 @@ async function scrapeFuseBoxInfo(makeSlug: string, modelSlug: string): Promise<S
         signal: AbortSignal.timeout(10000),
       });
       if (!res.ok) continue;
-
       const html = await res.text();
-      const images: { url: string; alt?: string; context?: string }[] = [];
-      const locationImages: { url: string; alt?: string }[] = [];
+
+      const images: ScrapedImage[] = [];
       const seen = new Set<string>();
 
-      const imgRegex = /(?:src|data-src|data-lazy-src)=["']?(https:\/\/fuse-box\.info\/wp-content\/uploads\/[^\s"'?>]+)/gi;
-      let match;
-      while ((match = imgRegex.exec(html)) !== null) {
-        const url = match[1];
+      const allImgRegex = /https:\/\/fuse-box\.info\/wp-content\/uploads\/[^"'\s>)]+\.jpg/gi;
+      let m;
+      while ((m = allImgRegex.exec(html)) !== null) {
+        const url = m[0];
         if (seen.has(url)) continue;
-        seen.add(url);
+        if (url.includes("favicon") || url.includes("header") || url.includes("logo") || url.includes("icon")) continue;
 
-        const isDiagram = /20\d{6,}/.test(url) && !url.includes("logo") && !url.includes("icon");
-        const isLocation = url.toLowerCase().includes("location") || url.toLowerCase().includes("box-") || url.toLowerCase().includes("engine") || url.toLowerCase().includes("interior") || url.toLowerCase().includes("fuse-box") || url.toLowerCase().includes("compartment");
+        const fullUrl = url;
+        const thumbUrl = url.replace(/\.jpg/, (s) => {
+          const thumbMatch = html.match(new RegExp(url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/\.jpg$/, "") + "-\\d+x\\d+\\.jpg"));
+          return thumbMatch ? fullUrl : s;
+        });
 
-        if (isDiagram) {
-          images.push({ url, context: isLocation ? "location" : "diagram" });
-          if (isLocation) locationImages.push({ url });
+        seen.add(fullUrl);
+
+        const lower = url.toLowerCase();
+        if (lower.includes("_loc") || lower.includes("location") || lower.includes("_en_loc") || lower.includes("_in_loc")) {
+          images.push({ url: fullUrl, type: "location", source: "fuse-box.info" });
+        } else if (lower.includes("-1.jpg") && !lower.includes("_loc")) {
+          if (lower.includes("_in_loc") || lower.includes("_en_loc")) {
+            images.push({ url: fullUrl, type: "location", source: "fuse-box.info" });
+          } else {
+            images.push({ url: fullUrl, type: "diagram", source: "fuse-box.info" });
+          }
+        } else if (lower.includes("-1-")) {
+          // thumbnail, skip - we have the full size
+        } else {
+          images.push({ url: fullUrl, type: "diagram", source: "fuse-box.info" });
         }
       }
 
-      const altRegex = /(?:src|data-src)=["']?(https:\/\/fuse-box\.info\/wp-content\/uploads\/[^"'\s>]+)["']?\s*(?:alt=["']?([^"'>]+))?/gi;
-      while ((match = altRegex.exec(html)) !== null) {
-        const url = match[1];
-        const alt = match[2]?.trim();
-        if (seen.has(url) || !url.includes("uploads")) continue;
-        seen.add(url);
-        if (/\.(jpg|jpeg|png|webp|gif)/i.test(url) && !url.includes("logo")) {
-          images.push({ url, alt, context: "diagram" });
-        }
-      }
-
-      const boxNames: string[] = [];
-      const headingRegex = /<h[23][^>]*>([^<]*(?:fuse|fusibl|caja|box|compartment|engine|interior|cabin|trunk|battery)[^<]*)<\/h[23]>/gi;
-      while ((match = headingRegex.exec(html)) !== null) {
-        boxNames.push(match[1].trim().replace(/&amp;/g, "&").replace(/&nbsp;/g, " "));
-      }
-
-      if (images.length > 0) {
-        return { source: "fuse-box.info", page_url: pageUrl, images, box_names: boxNames, location_images: locationImages };
-      }
+      if (images.length > 0) return images;
     } catch { continue; }
   }
-  return null;
+  return [];
 }
 
 export async function GET(request: NextRequest) {
@@ -130,28 +116,24 @@ export async function GET(request: NextRequest) {
   const modelSlug = model.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
   const yearSlug = year || "";
 
-  const results: ScrapeResult[] = [];
-
   const [opinautos, fuseBox] = await Promise.allSettled([
     scrapeOpinautos(makeSlug, modelSlug, yearSlug),
     scrapeFuseBoxInfo(makeSlug, modelSlug),
   ]);
 
-  if (opinautos.status === "fulfilled" && opinautos.value) results.push(opinautos.value);
-  if (fuseBox.status === "fulfilled" && fuseBox.value) results.push(fuseBox.value);
+  const allImages: ScrapedImage[] = [
+    ...(opinautos.status === "fulfilled" ? opinautos.value : []),
+    ...(fuseBox.status === "fulfilled" ? fuseBox.value : []),
+  ];
 
-  const allImages = results.flatMap((r) => r.images.map((img) => ({ ...img, source: r.source })));
-  const allLocationImages = results.flatMap((r) => r.location_images.map((img) => ({ ...img, source: r.source })));
-  const allBoxNames = [...new Set(results.flatMap((r) => r.box_names))];
-  const sources = results.map((r) => r.source);
-  const pageUrls = results.map((r) => r.page_url);
+  const diagrams = allImages.filter((i) => i.type === "diagram" || i.type === "thumbnail");
+  const locations = allImages.filter((i) => i.type === "location");
 
   return NextResponse.json({
-    sources,
-    page_urls: pageUrls,
-    images: allImages,
-    box_names: allBoxNames,
-    location_images: allLocationImages,
+    total: allImages.length,
+    diagrams: diagrams,
+    locations: locations,
+    sources: [...new Set(allImages.map((i) => i.source))],
   }, {
     headers: { "Cache-Control": "public, max-age=86400" },
   });
