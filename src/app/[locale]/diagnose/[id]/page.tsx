@@ -49,6 +49,7 @@ import { getDiagnosticLocal, saveDiagnosticLocal } from "@/lib/local-storage";
 import { ChatPanel } from "@/components/chat/chat-panel";
 import { AuthGate } from "@/components/auth/auth-gate";
 import { DiagramViewer } from "@/components/diagram/diagram-viewer";
+import { FuseBoxViewer } from "@/components/diagram/fuse-box-viewer";
 
 const severityMap: Record<string, string> = {
   low: "low", medium: "medium", high: "high", critical: "critical",
@@ -524,45 +525,8 @@ export default function DiagnosticResultPage() {
           <div className="mt-4 space-y-4">
             {(analysis.fuse_boxes && analysis.fuse_boxes.length > 0) ? analysis.fuse_boxes.map((box, bi) => (
               <Card key={bi} className="game-card">
-                <CardHeader className="pb-2">
-                  <div className="flex items-center gap-2">
-                    <div className="h-8 w-8 rounded-lg bg-amber-500/10 flex items-center justify-center"><Zap className="h-4 w-4 text-amber-500" /></div>
-                    <div>
-                      <CardTitle className="text-sm">{box.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground">{box.location}{box.reference ? ` (${box.reference})` : ""}</p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  {box.image_url && (
-                    <div className="mb-3 rounded-lg overflow-hidden border">
-                      <img src={`/api/proxy/image?url=${encodeURIComponent(box.image_url)}`} alt={box.name} className="w-full max-h-64 object-contain bg-muted" />
-                    </div>
-                  )}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border/50">
-                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.fuse")}</th>
-                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.amperage")}</th>
-                          <th className="text-left py-2 px-2 font-medium">{tr("fuses.circuit")}</th>
-                          <th className="text-left py-2 px-2 font-medium hidden sm:table-cell">{tr("fuses.protects")}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {box.fuses.map((fuse, fi) => (
-                          <tr key={fi} className="border-b border-border/20 hover:bg-muted/30">
-                            <td className="py-1.5 px-2 font-mono font-bold">{fuse.number}</td>
-                            <td className="py-1.5 px-2">
-                              <Badge variant="outline" className="text-[10px] font-mono">{fuse.amperage}</Badge>
-                            </td>
-                            <td className="py-1.5 px-2">{fuse.circuit}</td>
-                            <td className="py-1.5 px-2 text-muted-foreground hidden sm:table-cell">{fuse.protected_component || "-"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                <CardContent className="pt-4">
+                  <FuseBoxViewer box={box} />
                 </CardContent>
               </Card>
             )) : <p className="text-sm text-muted-foreground text-center py-8">{tr("fuses.noData")}</p>}

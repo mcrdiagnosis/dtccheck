@@ -379,6 +379,8 @@
       "protects": "Protege",
       "noData": "Nenhum dado de fusível encontrado para este veículo",
       "relays": "Relés",
+      "fuses": "fusíveis",
+      "search": "Buscar fusível...",
       "function": "Função",
       "location": "Localização"
     },

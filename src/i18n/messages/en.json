@@ -379,6 +379,8 @@
       "protects": "Protects",
       "noData": "No fuse data found for this vehicle",
       "relays": "Relays",
+      "fuses": "fuses",
+      "search": "Search fuse...",
       "function": "Function",
       "location": "Location"
     },
