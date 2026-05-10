@@ -768,7 +768,7 @@ export async function generateVehicleTechnicalData(
 
   const prompt = `Genera información técnica detallada para un ${vehicleStr}. Códigos DTC: ${codesStr}.
 
-Busca en internet la información exacta de este vehículo, incluyendo diagramas de fusibles. Responde en ${lang}.
+Busca en internet la información exacta de este vehículo. Busca especialmente imágenes de los diagramas de fusibles reales de este modelo y año. Responde en ${lang}.
 
 Responde SOLO JSON válido (sin markdown):
 {
@@ -779,8 +779,8 @@ Responde SOLO JSON válido (sin markdown):
       "reference": "BM34",
       "grid": {"rows": 4, "cols": 5},
       "fuses": [
-        {"number": "F1", "amperage": "15A", "circuit": "Inyectores", "color": "azul", "protected_component": "Rail de inyectores", "type": "MINI", "position": {"row": 1, "col": 1}},
-        {"number": "F2", "amperage": "10A", "circuit": "Sensor O2", "color": "rojo", "protected_component": "Sonda lambda upstream", "type": "MINI", "position": {"row": 1, "col": 2}}
+        {"number": "F1", "amperage": "15A", "circuit": "Inyectores", "color": "azul", "protected_component": "Rail de inyectores", "type": "MINI", "position": {"row": 1, "col": 1}, "icon": "engine"},
+        {"number": "F2", "amperage": "10A", "circuit": "Sensor O2", "color": "rojo", "protected_component": "Sonda lambda upstream", "type": "MINI", "position": {"row": 1, "col": 2}, "icon": "engine"}
       ],
       "image_url": "",
       "diagram_url": ""
@@ -804,16 +804,18 @@ REGLAS IMPORTANTES:
 - Incluye TODAS las cajas de fusibles del vehículo (motor, habitáculo, baúl si aplica)
 - Para cada caja lista TODOS los fusibles con número, amperaje y circuito
 - Colores de fusible: 5A=naranja, 7.5A=marrón, 10A=rojo, 15A=azul, 20A=amarillo, 25A=blanco, 30A=verde, 40A=rosa
-- Tipo de fusible (type): "MINI" (fusibles pequeños automotive), "ATO" (fusibles estándar transparentes), "ATO_SHUNT" (shunt tipo SFI), "MAXI" (fusibles grandes), "JCASE" (fusibles cartucho)
+- Tipo de fusible (type): "MINI" (fusibles pequeños), "ATO" (fusibles estándar transparentes), "ATO_SHUNT" (shunt tipo SFI), "MAXI" (fusibles grandes), "JCASE" (fusibles cartucho)
 - position: indica la posición física del fusible dentro de la caja. row y col empiezan en 1. Distribuye los fusibles como están físicamente en la caja real.
-- grid: indica el tamaño de la grilla (rows x cols) de la caja de fusibles. Los fusibles que no existen en ciertas posiciones simplemente no se listan.
+- grid: indica el tamaño de la grilla (rows x cols) de la caja. Posiciones vacías no se listan.
+- icon: el sistema principal que protege el fusible. Valores posibles: "radio", "light", "engine", "window", "airbag", "ac", "brake", "wiper", "lock", "horn", "fuel", "abs", "other"
 - Para PSA/Peugeot/Citroën usa referencias: BM34, BSM, BSI1, etc.
 - Incluye al menos los relés relacionados con los sistemas afectados por los DTC
 - Incluye ubicación física de los componentes relacionados con los DTC
-- image_url: URL de imagen del diagrama de fusibles si la encuentras. Si no, déjalo vacío ""
-- diagram_url: URL de imagen o diagrama SVG de la caja de fusibles si la encuentras. Si no, déjalo vacío ""
-- Sé exhaustivo con los datos de fusibles - es información crítica para el diagnóstico
-- IMPORTANTE: La distribución de position debe reflejar la disposición REAL de la caja de fusibles, mirando fotos o diagramas del vehículo`;
+- image_url: URL de una fotografía real de la caja de fusibles de ESTE modelo específico
+- diagram_url: URL del diagrama esquemático de fusibles de ESTE modelo (como los de opinautos.com, fuse-box.info, etc.)
+- IMPORTANTE: Busca activamente URLs de imágenes de diagramas de fusibles para este vehículo. Prioriza sitios como opinautos.com, fuse-box.info, autofusebox.info, etc.
+- La distribución de position debe reflejar la disposición REAL de la caja de fusibles
+- Sé exhaustivo con los datos de fusibles - es información crítica para el diagnóstico`;
 
   try {
     const result = await model.generateContent(prompt);

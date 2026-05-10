@@ -117,6 +117,7 @@ export interface VehicleReference {
 }
 
 export type FuseType = "MINI" | "ATO" | "ATO_SHUNT" | "MAXI" | "JCASE";
+export type FuseIcon = "radio" | "light" | "engine" | "window" | "airbag" | "ac" | "brake" | "wiper" | "lock" | "horn" | "fuel" | "abs" | "other";
 
 export interface FuseEntry {
   number: string;
@@ -126,6 +127,7 @@ export interface FuseEntry {
   protected_component?: string;
   type?: FuseType;
   position?: { row: number; col: number };
+  icon?: FuseIcon;
 }
 
 export interface FuseBox {
